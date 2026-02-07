@@ -25,11 +25,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const fetchAdmin = async () => {
       try {
-        const res = await api.get('/me');
-        const user = res.data.user || res.data.data;
-        if (user) setAdminName(user.full_name || 'Admin');
+        // Langkah 1: Cek Auth (Ambil userId)
+        const resAuth = await api.get('/me');
+        const authData = resAuth.data.user; // Isinya: { userId, role, ... }
+
+        if (authData && authData.userId) {
+           // Langkah 2: Ambil Detail Profil User berdasarkan userId
+           // Pastikan endpoint ini tersedia di backend Anda
+           const resProfile = await api.get(`/users/${authData.userId}`);
+           
+           // Sesuaikan pembungkus datanya (biasanya res.data.data atau res.data)
+           const userProfile = resProfile.data.data || resProfile.data; 
+           
+           setAdminName(userProfile.full_name || userProfile.name || 'Administrator');
+        }
       } catch (err) {
-        console.error(err);
+        console.error("Gagal mengambil data admin:", err);
+        setAdminName('Admin'); // Fallback jika gagal
       }
     };
     fetchAdmin();

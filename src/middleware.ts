@@ -1,22 +1,49 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  const token = request.cookies.get('token');
-  const url = request.nextUrl.pathname;
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get('token')?.value;
+  const { pathname } = request.nextUrl;
 
-  // 1. Kalau belum login, tendang ke login (kecuali halaman auth)
-  if (!token && (url.startsWith('/dashboard') || url.startsWith('/admin'))) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // --- 1. DAFTAR HALAMAN YANG WAJIB LOGIN (Protected) ---
+  // Kita cek apakah URL saat ini diawali dengan salah satu dari ini:
+  const protectedPaths = ['/admin', '/user', '/dashboard', '/reports'];
+  
+  const isProtectedRoute = protectedPaths.some((path) => 
+    pathname.startsWith(path)
+  );
+
+  // --- 2. DAFTAR HALAMAN AUTH (Login/Register) ---
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
+
+  // === LOGIKA REDIRECT ===
+
+  // A. Jika BELUM LOGIN tapi coba buka halaman Protected (/reports, /admin, dll)
+  if (!token && isProtectedRoute) {
+    const loginUrl = new URL('/login', request.url);
+    // (Opsional) Simpan url tujuan biar nanti bisa redirect balik setelah login
+    loginUrl.searchParams.set('callbackUrl', pathname); 
+    return NextResponse.redirect(loginUrl);
   }
 
-  // 2. (Opsional tapi Bagus) Cek Role di Middleware
-  // Catatan: Biasanya kita butuh decode JWT disini untuk tau role tanpa hit DB.
-  // Untuk tahap awal, kita percayakan proteksi visual di halaman masing-masing dulu.
-  
+  // B. Jika SUDAH LOGIN tapi coba buka halaman Login/Register
+  if (token && isAuthPage) {
+    // Redirect ke dashboard (atau sesuaikan logic role jika ada)
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
   return NextResponse.next();
 }
 
+// === KONFIGURASI MATCHER (PENTING!) ===
+// Middleware HANYA aktif di route yang terdaftar di sini.
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*'],
+  matcher: [
+    '/admin/:path*',      // Semua route admin
+    '/user/:path*',       // Semua route user
+    '/dashboard/:path*',  // Dashboard
+    '/reports/:path*',    // <--- TAMBAHAN PENTING: Laporan & Detail Laporan
+    '/login',
+    '/register',
+  ],
 };

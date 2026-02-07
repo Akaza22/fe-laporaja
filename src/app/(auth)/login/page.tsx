@@ -5,7 +5,7 @@ import api from '@/lib/axios';
 import { setCookie } from 'cookies-next';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -14,28 +14,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // 1. Login
       const resLogin = await api.post('/auth/login', { email, password });
       const token = resLogin.data.token;
       
       setCookie('token', token);
 
-      // 2. Cek Role
       const resMe = await api.get('/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      console.log("Struktur User:", resMe.data);
-
-      // PERBAIKAN UTAMA DI SINI:
-      // Ambil role dari dalam properti 'user'
       const userRole = resMe.data.user?.role;
 
-      // 3. Logic Redirect
       if (userRole && userRole.toUpperCase() === 'ADMIN') {
         router.push('/dashboard'); 
       } else {
@@ -51,91 +44,104 @@ const handleLogin = async (e: React.FormEvent) => {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#f8fafc] overflow-hidden">
-      {/* Background Decor */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-100 rounded-full blur-[120px] opacity-60" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-100 rounded-full blur-[120px] opacity-60" />
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="w-full max-w-[420px] mx-auto px-2" // px-2 agar aman di HP kecil
+    >
+      {/* === LOGO BRAND (Baru Ditambahkan) === */}
+      <div className="flex items-center gap-2.5 mb-8">
+        <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
+          {/* Ikon L atau Shield */}
+          <span className="font-bold text-xl">L</span>
+        </div>
+        <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          LaporAja.
+        </span>
+      </div>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="z-10 w-full max-w-[400px] px-4"
-      >
-        <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
-          <div className="mb-10 text-center">
-            <motion.div 
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200 mb-4"
-            >
-              <Lock className="text-white w-8 h-8" />
-            </motion.div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">LaporAja.</h1>
-            <p className="text-slate-500 mt-2 font-medium">Silakan masuk ke akun Anda</p>
-          </div>
+      {/* HEADER LOGIN */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+          Selamat Datang Kembali
+        </h2>
+        <p className="text-slate-500 mt-1 text-sm">
+          Masuk untuk mengelola laporan Anda.
+        </p>
+      </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Email</label>
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                {/* Perbaikan: Menambahkan class text-slate-900 */}
-                <input 
-                  type="email" 
-                  placeholder="nama@email.com" 
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)}
-                  required 
-                />
-              </div>
+      {/* FORM LOGIN */}
+      <form onSubmit={handleLogin} className="space-y-5">
+        
+        {/* Input Email */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-bold text-slate-700 ml-1">Email</label>
+          <div className="relative group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
+              <Mail className="w-5 h-5" />
             </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-center ml-1">
-                <label className="text-sm font-semibold text-slate-700">Password</label>
-                <button type="button" className="text-xs font-bold text-blue-600 hover:text-blue-700">Lupa?</button>
-              </div>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                {/* Perbaikan: Menambahkan class text-slate-900 */}
-                <input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)}
-                  required 
-                />
-              </div>
-            </div>
-
-            <motion.button 
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              disabled={isLoading}
-              className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                <>
-                  Masuk Sekarang
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </motion.button>
-          </form>
-
-          <div className="mt-8 text-center">
-            <p className="text-sm text-slate-500 font-medium">
-              Baru di LaporAja? {' '}
-              <Link href="/register" className="text-blue-600 font-bold hover:underline">
-                Buat Akun
-              </Link>
-            </p>
+            <input 
+              type="email" 
+              placeholder="nama@email.com" 
+              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)}
+              required 
+            />
           </div>
         </div>
-      </motion.div>
-    </div>
+
+        {/* Input Password */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center ml-1">
+            <label className="text-sm font-bold text-slate-700">Password</label>
+            <Link href="#" className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+              Lupa Password?
+            </Link>
+          </div>
+          <div className="relative group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
+              <Lock className="w-5 h-5" />
+            </div>
+            <input 
+              type="password" 
+              placeholder="••••••••" 
+              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)}
+              required 
+            />
+          </div>
+        </div>
+
+        {/* Tombol Login */}
+        <button 
+          type="submit"
+          disabled={isLoading}
+          className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-slate-800 active:scale-[0.98] transition-all shadow-lg shadow-slate-900/20 disabled:opacity-70 disabled:cursor-not-allowed mt-4"
+        >
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <>
+              Masuk Sekarang
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </button>
+
+      </form>
+
+      {/* FOOTER LINK */}
+      <div className="mt-8 text-center">
+        <p className="text-sm text-slate-500">
+          Belum punya akun? {' '}
+          <Link href="/register" className="text-blue-600 font-bold hover:underline transition-colors">
+            Daftar Sekarang
+          </Link>
+        </p>
+      </div>
+    </motion.div>
   );
 }
