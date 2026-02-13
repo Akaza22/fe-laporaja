@@ -30,11 +30,12 @@ export default function LoginPage() {
       const userRole = resMe.data.user?.role;
 
       if (userRole && userRole.toUpperCase() === 'ADMIN') {
-        router.push('/dashboard'); 
+        // Ganti push menjadi replace
+        router.replace('/dashboard'); 
       } else {
-        router.push('/user'); 
+        // Ganti push menjadi replace
+        router.replace('/user'); 
       }
-
     } catch (err) {
       console.error(err);
       alert('Login Gagal. Periksa email/password.');

@@ -1,4 +1,3 @@
-// src/components/chat/ReportDetailBubble.tsx
 import { MapPin, ImageIcon, Calendar } from 'lucide-react';
 
 interface ReportDetailProps {
@@ -7,11 +6,13 @@ interface ReportDetailProps {
     description: string;
     address: string;
     created_at: string;
-    images?: { url: string }[]; // Sesuaikan struktur dari backend Anda
+    images?: { url: string }[];
   };
+  // Posisi onImageClick di luar objek report
+  onImageClick?: (url: string) => void; 
 }
 
-export default function ReportDetailBubble({ report }: ReportDetailProps) {
+export default function ReportDetailBubble({ report, onImageClick }: ReportDetailProps) {
   return (
     <div className="flex justify-center mb-6">
       <div className="max-w-[90%] md:max-w-[70%] bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
@@ -19,7 +20,7 @@ export default function ReportDetailBubble({ report }: ReportDetailProps) {
         {/* Header Bubble */}
         <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center">
           <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1">
-             DETAIL LAPORAN
+              DETAIL LAPORAN
           </span>
           <span className="text-[10px] text-slate-400 flex items-center gap-1">
             <Calendar className="w-3 h-3" />
@@ -52,8 +53,11 @@ export default function ReportDetailBubble({ report }: ReportDetailProps) {
               </p>
               <div className={`grid gap-2 ${report.images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {report.images.map((img, idx) => (
-                  <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 group cursor-pointer">
-                    {/* Ganti src dengan property URL gambar yang benar dari backend */}
+                  <div 
+                    key={idx} 
+                    className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 group cursor-pointer bg-slate-100"
+                    onClick={() => onImageClick && onImageClick(img.url)} 
+                  >
                     <img 
                       src={img.url} 
                       alt={`Bukti ${idx + 1}`} 

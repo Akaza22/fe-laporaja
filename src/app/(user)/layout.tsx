@@ -20,16 +20,27 @@ export default function UserLayout({
   const [user, setUser] = useState<{ full_name: string } | null>(null);
 
   // LOGIC DETEKSI HALAMAN CHAT
-  // Jika URL dimulai dengan /user/chat/, maka kita anggap ini mode Chat Fullscreen
   const isChatPage = pathname.startsWith('/user/chat/');
 
-  // Fetch User Info
+  // Fetch User Info (Chaining Request)
   useEffect(() => {
     const fetchUser = async () => {
       try {
+        // 1. Dapatkan userId dari token via endpoint /me
         const resMe = await api.get('/me');
-        const userData = resMe.data.user || resMe.data.data || resMe.data;
-        setUser(userData);
+        const authData = resMe.data.user || resMe.data; // Asumsi response: { user: { userId: "..." } }
+        
+        // Sesuaikan key userId dengan response backend Anda (biasanya userId atau id)
+        const userId = authData?.userId || authData?.id;
+
+        if (userId) {
+          // 2. Fetch data profil lengkap berdasarkan userId
+          const resProfile = await api.get(`/users/${userId}`);
+          
+          // Mengambil dari response.data.data sesuai format JSON yang Anda berikan
+          const userData = resProfile.data.data; 
+          setUser(userData);
+        }
       } catch (err) {
         console.error("Gagal load user info", err);
       }
@@ -45,7 +56,7 @@ export default function UserLayout({
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       
-      {/* ================= HEADER (HANYA TAMPIL JIKA BUKAN CHAT PAGE) ================= */}
+      {/* ================= HEADER ================= */}
       {!isChatPage && (
         <>
           {/* HEADER DESKTOP */}
@@ -58,8 +69,9 @@ export default function UserLayout({
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <p className="text-sm font-bold text-slate-900">{user?.full_name || 'Warga'}</p>
-                  <p className="text-xs text-slate-500">Warga Aktif</p>
+                  {/* Menampilkan full_name dari API, fallback ke 'Warga' */}
+                  <p className="text-sm font-bold text-slate-900">{user?.full_name || 'Memuat...'}</p>
+                  <p className="text-xs text-slate-500">Aktif</p>
                 </div>
                 <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center border border-slate-200">
                   <UserIcon className="w-5 h-5 text-slate-600" />
@@ -87,22 +99,18 @@ export default function UserLayout({
       )}
 
       {/* ================= MAIN CONTENT ================= */}
-      {/* LOGIC PENTING DI SINI:
-          - Jika Chat Page: Tidak ada padding (p-0), Tinggi Full (h-screen).
-          - Jika Halaman Biasa: Ada padding atas/bawah agar konten tidak tertutup header/nav.
-      */}
-      <main className={isChatPage ? 'h-screen w-full overflow-hidden' : 'pb-32 md:pb-12 pt-4 md:pt-10'}>
+      <main className={isChatPage ? 'h-screen w-full overflow-hidden' : 'flex-1 flex flex-col h-[calc(100vh-76px)] overflow-hidden'}>
         {children}
       </main>
 
-      {/* ================= BOTTOM NAV (HANYA TAMPIL JIKA BUKAN CHAT PAGE) ================= */}
+      {/* ================= BOTTOM NAV MOBILE ================= */}
       {!isChatPage && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-2 z-50 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.03)]">
           <div className="flex items-center justify-between max-w-sm mx-auto">
             {/* Home Button */}
-            <Link href="/user/dashboard">
-              <div className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${pathname.includes('/dashboard') ? 'text-blue-600' : 'text-slate-400 hover:bg-slate-50'}`}>
-                <Home className={`w-6 h-6 ${pathname.includes('/dashboard') ? 'fill-current' : ''}`} />
+            <Link href="/user">
+              <div className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${pathname.includes('/user') ? 'text-blue-600' : 'text-slate-400 hover:bg-slate-50'}`}>
+                <Home className={`w-6 h-6 ${pathname.includes('/user') ? 'fill-current' : ''}`} />
                 <span className="text-[10px] font-bold">Home</span>
               </div>
             </Link>

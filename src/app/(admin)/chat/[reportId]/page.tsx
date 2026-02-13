@@ -10,7 +10,9 @@ import {
   Loader2,
   MapPin,
   ChevronDown,
-  Circle
+  Circle,
+  X,          // Icon Baru
+  Download    // Icon Baru
 } from 'lucide-react';
 import ReportDetailBubble from '@/components/ReportDetailBubble';
 
@@ -50,6 +52,9 @@ export default function AdminChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [showNewMessageBtn, setShowNewMessageBtn] = useState(false);
+  
+  // STATE BARU UNTUK PREVIEW GAMBAR
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   /* =======================
       STATUS STYLE
@@ -59,7 +64,6 @@ export default function AdminChatPage() {
       case 'SUBMITTED':
         return 'bg-slate-100 text-slate-700 border-slate-300';
       case 'IN_PROGRESS':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'VERIFIED':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'RESOLVED':
@@ -162,10 +166,8 @@ export default function AdminChatPage() {
   };
 
   return (
-    // PARENT: h-screen dan overflow-hidden KUNCI untuk full screen & no double scroll
     <div className="flex flex-col h-screen bg-[#EFEAE2] overflow-hidden relative">
 
-      {/* CSS KHUSUS UNTUK MENGHILANGKAN SCROLLBAR */}
       <style jsx global>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
@@ -191,7 +193,6 @@ export default function AdminChatPage() {
               {report?.category || 'Memuat...'}
             </h2>
             
-            {/* STATUS BADGE */}
             <span className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border tracking-wide shadow-sm ${getStatusStyle(report?.status)}`}>
               <Circle className="w-2 h-2 fill-current" />
               {report?.status?.replace('_', ' ')}
@@ -206,7 +207,6 @@ export default function AdminChatPage() {
       </div>
 
       {/* CHAT AREA */}
-      {/* Tambahkan class 'hide-scrollbar' di sini */}
       <div
         ref={chatContainerRef}
         onScroll={handleScroll}
@@ -219,7 +219,8 @@ export default function AdminChatPage() {
           </div>
         ) : (
           <>
-            {report && <ReportDetailBubble report={report} />}
+            {/* OPER FUNGSI setSelectedImage KE REPORT BUBBLE */}
+            {report && <ReportDetailBubble report={report} onImageClick={setSelectedImage} />}
 
             {messages.map((msg, idx) => {
               const isAdmin = msg.sender_role === 'ADMIN';
@@ -263,17 +264,14 @@ export default function AdminChatPage() {
                         }
                       `}
                     >
-                      {/* NAMA PELAPOR */}
                       {!isAdmin && (
                         <p className="text-[10px] font-semibold text-orange-600 mb-0.5 uppercase tracking-wide">
                           {msg.sender_name || 'Pelapor'}
                         </p>
                       )}
 
-                      {/* MESSAGE */}
                       <p className="whitespace-pre-wrap">{msg.message}</p>
 
-                      {/* TIME */}
                       <div className="flex justify-end mt-1">
                         <span
                           className={`text-[10px] font-medium ${
@@ -333,6 +331,52 @@ export default function AdminChatPage() {
           </button>
         </form>
       </div>
+
+      {/* ======================================= */}
+      {/* MODAL LIGHTBOX FULLSCREEN UNTUK GAMBAR  */}
+      {/* ======================================= */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedImage(null)}
+            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md p-4"
+          >
+            {/* Tombol Close */}
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-6 right-6 p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Gambar */}
+            <motion.img 
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              src={selectedImage} 
+              alt="Fullscreen Preview" 
+              className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()} // Supaya klik gambar tidak menutup modal
+            />
+
+            {/* Tombol Download */}
+            {/* target="_blank" memaksa gambar terbuka di tab baru jika browser memblokir direct download lintas origin */}
+            <a
+              href={selectedImage ? selectedImage.replace('/upload/', '/upload/fl_attachment/') : '#'}
+              download
+              onClick={(e) => e.stopPropagation()}
+              className="absolute bottom-10 px-6 py-3 bg-white text-slate-900 font-extrabold text-sm rounded-full flex items-center gap-2 hover:bg-slate-200 transition-colors shadow-xl hover:scale-105 active:scale-95"
+            >
+              <Download className="w-4 h-4" />
+              Unduh Gambar
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
