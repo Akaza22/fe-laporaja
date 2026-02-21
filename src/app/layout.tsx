@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import CustomToaster from '../components/CustomToaster';
+import SplashScreen from '@/components/ui/SplashScreen';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,8 +28,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="tes.png" />
+        <meta name="theme-color" content="#2563EB" />
+      </head>
       <body className={inter.className}>
+        <SplashScreen />
         <main>{children}</main>
+        <CustomToaster />
       </body>
     </html>
   );

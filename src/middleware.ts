@@ -2,48 +2,56 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  // Ambil token dari cookies
   const token = request.cookies.get('token')?.value;
-  const { pathname } = request.nextUrl;
+  const path = request.nextUrl.pathname;
 
-  // --- 1. DAFTAR HALAMAN YANG WAJIB LOGIN (Protected) ---
-  // Kita cek apakah URL saat ini diawali dengan salah satu dari ini:
-  const protectedPaths = ['/admin', '/user', '/dashboard', '/reports'];
-  
-  const isProtectedRoute = protectedPaths.some((path) => 
-    pathname.startsWith(path)
-  );
-
-  // --- 2. DAFTAR HALAMAN AUTH (Login/Register) ---
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
-
-  // === LOGIKA REDIRECT ===
-
-  // A. Jika BELUM LOGIN tapi coba buka halaman Protected (/reports, /admin, dll)
-  if (!token && isProtectedRoute) {
-    const loginUrl = new URL('/login', request.url);
-    // (Opsional) Simpan url tujuan biar nanti bisa redirect balik setelah login
-    loginUrl.searchParams.set('callbackUrl', pathname); 
-    return NextResponse.redirect(loginUrl);
+  // 1. Kalau belum login sama sekali, tendang ke /login
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // B. Jika SUDAH LOGIN tapi coba buka halaman Login/Register
-  if (token && isAuthPage) {
-    // Redirect ke dashboard (atau sesuaikan logic role jika ada)
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  try {
+    // 2. Decode Token (Ambil Payload JWT)
+    // Asumsinya kamu menggunakan JWT standar untuk token login
+    const payloadBase64 = token.split('.')[1];
+    const decodedJson = atob(payloadBase64);
+    const payload = JSON.parse(decodedJson);
+    
+    // Asumsi di dalam token kamu menyimpan data 'role' (contoh: 'ADMIN' atau 'USER')
+    const role = payload.role?.toUpperCase(); 
+
+    // 3. Aturan Proteksi Route
+    // (Sesuaikan dengan path kamu)
+    const isUserRoute = path.startsWith('/user') || path === '/reports/create';
+    const isAdminRoute = path === '/dashboard' || path === '/reports' || path.startsWith('/users') || (path.startsWith('/chat') && !path.startsWith('/user/chat'));
+
+    // Jika Warga (USER) iseng mengetik URL Admin
+    if (isAdminRoute && role === 'USER') {
+      return NextResponse.redirect(new URL('/user', request.url));
+    }
+
+    // Jika Admin iseng mengetik URL Warga
+    if (isUserRoute && role === 'ADMIN') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+  } catch (error) {
+    // Jika token rusak / expired, minta login ulang
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
+  // Jika aman, biarkan lewat
   return NextResponse.next();
 }
 
-// === KONFIGURASI MATCHER (PENTING!) ===
-// Middleware HANYA aktif di route yang terdaftar di sini.
+// 4. Daftarkan URL mana saja yang mau diawasi oleh Middleware ini
 export const config = {
   matcher: [
-    '/admin/:path*',      // Semua route admin
-    '/user/:path*',       // Semua route user
-    '/dashboard/:path*',  // Dashboard
-    '/reports/:path*',    // <--- TAMBAHAN PENTING: Laporan & Detail Laporan
-    '/login',
-    '/register',
-  ],
-};
+    '/dashboard/:path*',
+    '/reports/:path*',
+    '/users/:path*',
+    '/chat/:path*',
+    '/user/:path*',
+  ]
+}

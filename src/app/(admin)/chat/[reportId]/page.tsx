@@ -11,10 +11,14 @@ import {
   MapPin,
   ChevronDown,
   Circle,
-  X,          // Icon Baru
-  Download    // Icon Baru
+  X,          
+  Download,   
+  Lock,
+  CheckCircle2
 } from 'lucide-react';
 import ReportDetailBubble from '@/components/ReportDetailBubble';
+import { notify } from '@/lib/notify'; // HELPER TOAST
+import ConfirmModal from '@/components/ui/ConfirmModal'; // KOMPONEN MODAL
 
 interface Message {
   id: string;
@@ -51,10 +55,14 @@ export default function AdminChatPage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [showNewMessageBtn, setShowNewMessageBtn] = useState(false);
   
-  // STATE BARU UNTUK PREVIEW GAMBAR
+  // States untuk fitur Tutup Laporan & Preview
+  const [closing, setClosing] = useState(false); 
+  const [showConfirmModal, setShowConfirmModal] = useState(false); // State Modal
+  const [showNewMessageBtn, setShowNewMessageBtn] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const isChatClosed = ['RESOLVED', 'DONE', 'REJECTED'].includes(report?.status || '');
 
   /* =======================
       STATUS STYLE
@@ -145,9 +153,13 @@ export default function AdminChatPage() {
     setShowNewMessageBtn(false);
   };
 
+  /* =======================
+      HANDLERS
+   ======================== */
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || isChatClosed) return;
 
     setSending(true);
     try {
@@ -159,9 +171,41 @@ export default function AdminChatPage() {
       await fetchData();
       setTimeout(scrollToBottom, 100);
     } catch {
-      alert('Gagal kirim');
+      notify.error("Gagal Mengirim", "Pesan kamu gagal terkirim.");
     } finally {
       setSending(false);
+    }
+  };
+
+  // 1. Membuka Modal (Tidak langsung tembak API)
+  const handleOpenCloseReportModal = () => {
+    setShowConfirmModal(true);
+  };
+
+  // 2. Mengeksekusi penutupan laporan jika dikonfirmasi di Modal
+  const executeCloseReport = async () => {
+    setShowConfirmModal(false); // Tutup modal dulu biar UX mulus
+    setClosing(true);
+    
+    const toastId = notify.loading('Memproses...', 'Sedang menutup laporan aduan.');
+    
+    try {
+      // ===== PERUBAHANNYA DI SINI =====
+      // Tambahkan 'message' default otomatis dari sistem agar validasi backend lolos
+      await api.post(`/message/reports/${reportId}/messages`, {
+        message: "Sesi percakapan ini telah diselesaikan dan ditutup oleh Petugas.",
+        close: true
+      });
+      // ================================
+      
+      notify.update(toastId, 'success', 'Berhasil Ditutup!', 'Sesi laporan telah selesai.');
+      await fetchData(); 
+      setTimeout(scrollToBottom, 100);
+    } catch (err) {
+      console.error(err);
+      notify.update(toastId, 'error', 'Gagal', 'Terjadi kesalahan saat menutup laporan.');
+    } finally {
+      setClosing(false);
     }
   };
 
@@ -169,41 +213,53 @@ export default function AdminChatPage() {
     <div className="flex flex-col h-screen bg-[#EFEAE2] overflow-hidden relative">
 
       <style jsx global>{`
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .hide-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       {/* HEADER */}
-      <div className="px-4 py-3 bg-[#F0F2F5] border-b border-slate-200 flex items-center gap-3 z-10 shadow-sm flex-none">
-        <button
-          onClick={() => router.push('/reports')}
-          className="p-2 hover:bg-slate-200 rounded-full text-slate-600 transition flex-shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
+      <div className="px-4 py-3 bg-[#F0F2F5] border-b border-slate-200 flex items-center justify-between z-10 shadow-sm flex-none">
+        
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push('/reports')}
+            className="p-2 hover:bg-slate-200 rounded-full text-slate-600 transition flex-shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-bold text-slate-900 text-base truncate">
-              {report?.category || 'Memuat...'}
-            </h2>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="font-bold text-slate-900 text-base truncate">
+                {report?.category || 'Memuat...'}
+              </h2>
+              
+              <span className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border tracking-wide shadow-sm ${getStatusStyle(report?.status)}`}>
+                <Circle className="w-2 h-2 fill-current" />
+                {report?.status?.replace('_', ' ')}
+              </span>
+            </div>
             
-            <span className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border tracking-wide shadow-sm ${getStatusStyle(report?.status)}`}>
-              <Circle className="w-2 h-2 fill-current" />
-              {report?.status?.replace('_', ' ')}
-            </span>
+            <p className="text-xs text-slate-600 flex items-center gap-1 mt-0.5 truncate">
+              <MapPin className="w-3 h-3 text-red-500 flex-shrink-0" />
+              <span className="truncate">{report?.address || 'Lokasi...'}</span>
+            </p>
           </div>
-          
-          <p className="text-xs text-slate-600 flex items-center gap-1 mt-0.5 truncate">
-            <MapPin className="w-3 h-3 text-red-500 flex-shrink-0" />
-            <span className="truncate">{report?.address || 'Lokasi...'}</span>
-          </p>
         </div>
+
+        {/* TOMBOL TUTUP LAPORAN DI KANAN ATAS */}
+        {!isChatClosed && !loading && (
+          <button
+            onClick={handleOpenCloseReportModal} // PANGGIL MODAL DI SINI
+            disabled={closing}
+            title="Tutup Laporan"
+            className="flex items-center gap-2 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-70 shadow-sm shrink-0"
+          >
+            {closing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            <span className="hidden sm:block">Tutup Laporan</span>
+          </button>
+        )}
+
       </div>
 
       {/* CHAT AREA */}
@@ -219,7 +275,6 @@ export default function AdminChatPage() {
           </div>
         ) : (
           <>
-            {/* OPER FUNGSI setSelectedImage KE REPORT BUBBLE */}
             {report && <ReportDetailBubble report={report} onImageClick={setSelectedImage} />}
 
             {messages.map((msg, idx) => {
@@ -312,29 +367,56 @@ export default function AdminChatPage() {
 
       {/* INPUT AREA */}
       <div className="p-3 bg-[#F0F2F5] border-t border-slate-200 z-10 flex-none">
-        <form
-          onSubmit={handleSendMessage}
-          className="flex items-center gap-2 max-w-4xl mx-auto"
-        >
-          <input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Ketik pesan balasan..."
-            className="flex-1 p-3 rounded-full border border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all shadow-sm"
-            disabled={sending}
-          />
-          <button
-            disabled={sending || !newMessage.trim()}
-            className="p-3 bg-slate-900 text-white rounded-full hover:bg-slate-800 disabled:opacity-50 transition shadow-md flex-shrink-0"
+        {isChatClosed ? (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-4 flex items-center justify-center gap-3 border border-dashed border-slate-300 shadow-sm max-w-4xl mx-auto"
           >
-            {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 ml-0.5" />}
-          </button>
-        </form>
+            <div className="p-2 bg-slate-100 rounded-full">
+                <Lock className="w-5 h-5 text-slate-500" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-slate-800">Laporan Selesai / Ditutup</p>
+              <p className="text-xs text-slate-500">Kamu tidak dapat lagi membalas pesan ini.</p>
+            </div>
+          </motion.div>
+        ) : (
+          <form
+            onSubmit={handleSendMessage}
+            className="flex items-center gap-2 max-w-4xl mx-auto"
+          >
+            <input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Ketik pesan balasan..."
+              className="flex-1 p-3 rounded-full border border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all shadow-sm"
+              disabled={sending}
+            />
+            <button
+              disabled={sending || !newMessage.trim()}
+              className="p-3 bg-slate-900 text-white rounded-full hover:bg-slate-800 disabled:opacity-50 transition shadow-md flex-shrink-0"
+            >
+              {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 ml-0.5" />}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* ======================================= */}
-      {/* MODAL LIGHTBOX FULLSCREEN UNTUK GAMBAR  */}
+      {/* RENDER MODAL KONFIRMASI DI SINI          */}
       {/* ======================================= */}
+      <ConfirmModal 
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={executeCloseReport}
+        title="Tutup Laporan?"
+        message="Yakin ingin menutup sesi pelaporan ini? Kamu dan Warga tidak akan bisa saling membalas pesan lagi."
+        confirmText="Ya"
+        cancelText="Batal"
+        type="warning" 
+      />
+
+      {/* MODAL LIGHTBOX FULLSCREEN UNTUK GAMBAR */}
       <AnimatePresence>
         {selectedImage && (
           <motion.div
@@ -344,15 +426,12 @@ export default function AdminChatPage() {
             onClick={() => setSelectedImage(null)}
             className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md p-4"
           >
-            {/* Tombol Close */}
             <button
               onClick={() => setSelectedImage(null)}
               className="absolute top-6 right-6 p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-10"
             >
               <X className="w-6 h-6" />
             </button>
-
-            {/* Gambar */}
             <motion.img 
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
@@ -360,11 +439,8 @@ export default function AdminChatPage() {
               src={selectedImage} 
               alt="Fullscreen Preview" 
               className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
-              onClick={(e) => e.stopPropagation()} // Supaya klik gambar tidak menutup modal
+              onClick={(e) => e.stopPropagation()}
             />
-
-            {/* Tombol Download */}
-            {/* target="_blank" memaksa gambar terbuka di tab baru jika browser memblokir direct download lintas origin */}
             <a
               href={selectedImage ? selectedImage.replace('/upload/', '/upload/fl_attachment/') : '#'}
               download
