@@ -31,10 +31,10 @@ interface Message {
 
 interface ReportDetail {
   id: string;
-  category: string;
-  description: string;
+  category_name: string | null; // <-- UBAH DI SINI: Sesuaikan dengan backend
+  description?: string; // <-- Opsional
   status: string;
-  address: string;
+  address?: string; // <-- Opsional
   created_at: string;
   images?: { url: string }[];
 }
@@ -65,7 +65,7 @@ export default function AdminChatPage() {
   const isChatClosed = ['RESOLVED', 'DONE', 'REJECTED'].includes(report?.status || '');
 
   /* =======================
-      STATUS STYLE
+     STATUS STYLE
    ======================== */
   const getStatusStyle = (status?: string) => {
     switch (status) {
@@ -114,7 +114,7 @@ export default function AdminChatPage() {
   }, [reportId]);
 
   /* =======================
-      AUTO SCROLL LOGIC
+     AUTO SCROLL LOGIC
    ======================== */
 
   useEffect(() => {
@@ -154,7 +154,7 @@ export default function AdminChatPage() {
   };
 
   /* =======================
-      HANDLERS
+     HANDLERS
    ======================== */
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -190,13 +190,11 @@ export default function AdminChatPage() {
     const toastId = notify.loading('Memproses...', 'Sedang menutup laporan aduan.');
     
     try {
-      // ===== PERUBAHANNYA DI SINI =====
       // Tambahkan 'message' default otomatis dari sistem agar validasi backend lolos
       await api.post(`/message/reports/${reportId}/messages`, {
         message: "Sesi percakapan ini telah diselesaikan dan ditutup oleh Petugas.",
         close: true
       });
-      // ================================
       
       notify.update(toastId, 'success', 'Berhasil Ditutup!', 'Sesi laporan telah selesai.');
       await fetchData(); 
@@ -231,7 +229,8 @@ export default function AdminChatPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-slate-900 text-base truncate">
-                {report?.category || 'Memuat...'}
+                {/* <-- UBAH DI SINI: Panggil category_name */}
+                {report ? (report.category_name || 'Laporan Umum') : 'Memuat...'}
               </h2>
               
               <span className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border tracking-wide shadow-sm ${getStatusStyle(report?.status)}`}>

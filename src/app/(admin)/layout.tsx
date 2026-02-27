@@ -18,16 +18,37 @@ import {
 } from 'lucide-react';
 import { deleteCookie } from 'cookies-next';
 import api from '@/lib/axios';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [adminName, setAdminName] = useState('Administrator');
+  const [isExpiredModalOpen, setIsExpiredModalOpen] = useState(false);
   
   // State untuk animasi hover sidebar
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
 
   const isChatPage = pathname.startsWith('/chat/');
+
+  useEffect(() => {
+    const handleExpired = () => {
+      setIsExpiredModalOpen(true);
+    };
+
+    // Mendengarkan event dari axios interceptor tadi
+    window.addEventListener('auth-token-expired', handleExpired);
+
+    return () => {
+      window.removeEventListener('auth-token-expired', handleExpired);
+    };
+  }, []);
+
+  const handleRedirectLogin = () => {
+    deleteCookie('token'); // Hapus token yang basi
+    setIsExpiredModalOpen(false);
+    router.replace('/login'); // Arahkan ke login
+  };
 
   useEffect(() => {
     const fetchAdmin = async () => {
@@ -139,13 +160,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <p className="px-4 text-xs font-bold tracking-widest text-slate-500 uppercase mb-4 mt-2">Menu Utama</p>
             <SidebarMenuItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" isActive={pathname === '/dashboard'} />
             <SidebarMenuItem href="/reports" icon={FileText} label="Laporan" isActive={pathname.startsWith('/reports')} />
-            <SidebarMenuItem href="/user-manage" icon={Users} label="Manajemen Pengguna" isActive={pathname.startsWith('/users')} />
+            <SidebarMenuItem href="/user-manage" icon={Users} label="Manajemen Pengguna" isActive={pathname.startsWith('/user-manage')} />
 
             {/* IDE FITUR POTENSIAL (Saat ini didisable) */}
             <div className="pt-6">
               <p className="px-4 text-xs font-bold tracking-widest text-slate-500 uppercase mb-4">Analitik & Sistem</p>
+              <SidebarMenuItem href="/categories" icon={Tags} label="Kategori" isActive={pathname === '/categories'} />
               <SidebarMenuItem href="/analytics" icon={BarChart3} label="Statistik" disabled />
-              <SidebarMenuItem href="/categories" icon={Tags} label="Kategori" disabled />
               <SidebarMenuItem href="/settings" icon={Settings} label="Pengaturan" disabled />
             </div>
 
@@ -231,6 +252,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
         )}
       </main>
+      <ConfirmModal
+        isOpen={isExpiredModalOpen}
+        title="Sesi Berakhir"
+        message="Sesi login Anda telah habis demi keamanan. Silakan login kembali untuk melanjutkan."
+        onConfirm={handleRedirectLogin}
+        onClose={handleRedirectLogin} // User harus klik OK, tidak bisa cancel
+        type="warning"
+      />
     </div>
   );
 }

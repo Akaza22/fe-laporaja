@@ -1,22 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '@/lib/axios';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, MapPin, Camera, X, 
-  Loader2, Send, CalendarClock, ListPlus, AlignLeft, CheckCircle2
+  Loader2, Send, CalendarClock, AlignLeft, CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import CustomDropdown from '@/components/CustomDropdown'; // Pastikan path import ini sesuai
 
 export default function CreateReportPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+  // State untuk menyimpan daftar kategori dari API
+  const [categoryOptions, setCategoryOptions] = useState<{label: string, value: string}[]>([]);
+
   const [formData, setFormData] = useState({
-    category: 'Jalan Rusak',
+    category: '', // Akan menyimpan UUID kategori yang dipilih
     description: '',
     address: '',
     latitude: '',
@@ -26,6 +30,30 @@ export default function CreateReportPage() {
 
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+
+  // Mengambil daftar Kategori Aktif dari Backend
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await api.get('/categories', {
+          params: { is_active: 'true' } 
+        });
+        const data = res.data.data || res.data || [];
+        
+        // Mapping response dari backend ke format yang dibutuhkan CustomDropdown
+        const options = data.map((cat: any) => ({
+          label: cat.name,
+          value: cat.id // Menggunakan ID kategori (UUID)
+        }));
+        setCategoryOptions(options);
+      } catch (error) {
+        console.error("Gagal mengambil data kategori:", error);
+        toast.error("Gagal memuat daftar kategori laporan.");
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleGetLocation = () => {
     toast.loading("Mencari titik koordinat GPS...", { id: 'gps' });
@@ -70,6 +98,13 @@ export default function CreateReportPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validasi Kategori
+    if (!formData.category) {
+      toast.warning("Mohon pilih Kategori Masalah terlebih dahulu.");
+      return;
+    }
+
     if (!formData.latitude || !formData.longitude) {
       toast.warning("Mohon ambil titik GPS kejadian terlebih dahulu.");
       return;
@@ -80,7 +115,7 @@ export default function CreateReportPage() {
 
     try {
       const resReport = await api.post('/reports', {
-        category: formData.category,
+        category_id: formData.category, // <-- PERUBAHAN: menggunakan category_id
         description: formData.description,
         address: formData.address,
         latitude: parseFloat(formData.latitude),
@@ -110,10 +145,8 @@ export default function CreateReportPage() {
   };
 
   return (
-    // KANVAS UTAMA: bg-white murni, menyatu, tidak ada jarak abu-abu di pinggir
     <div className="flex flex-col h-[calc(100vh-80px)] lg:h-[calc(100vh-76px)] w-full bg-white overflow-hidden relative">
       
-      {/* Sembunyikan Scrollbar */}
       <style jsx global>{`
         ::-webkit-scrollbar { display: none !important; }
         html, body { -ms-overflow-style: none !important; scrollbar-width: none !important; }
@@ -121,7 +154,7 @@ export default function CreateReportPage() {
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* === HEADER MENYATU (Bukan kotak terpisah) === */}
+      {/* === HEADER === */}
       <div className="flex-none border-b border-slate-100 px-4 sm:px-8 py-5 lg:py-6 bg-white z-10 flex items-center gap-4">
         <Link href="/user" className="w-10 h-10 bg-slate-50 border border-slate-200 rounded-full flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-all shrink-0">
           <ArrowLeft className="w-5 h-5" />
@@ -132,43 +165,35 @@ export default function CreateReportPage() {
         </div>
       </div>
 
-      {/* === KONTEN FORM (Seamless, menyatu dengan background) === */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 sm:px-8 py-8 lg:py-10">
+      {/* === KONTEN FORM === */}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-4 sm:px-8 py-8 lg:py-10 relative z-0">
         <div className="max-w-4xl mx-auto">
           
           <form onSubmit={handleSubmit} className="space-y-8 sm:space-y-10">
             
             {/* Baris 1: Kategori & Waktu */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-50">
+              
+              {/* === IMPLEMENTASI CUSTOM DROPDOWN === */}
+              <div className="space-y-2.5 flex flex-col">
                 <label className="text-sm font-bold text-slate-900">Kategori Masalah</label>
-                <div className="relative group">
-                  <ListPlus className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
-                  <select 
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all appearance-none font-semibold"
+                <div className="w-full relative z-50">
+                  <CustomDropdown
                     value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                  >
-                    <option value="Jalan Rusak">Jalan Rusak</option>
-                    <option value="Sampah Menumpuk">Sampah Menumpuk</option>
-                    <option value="Lampu Jalan Mati">Lampu Jalan Mati</option>
-                    <option value="Banjir">Banjir</option>
-                    <option value="Pencurian">Pencurian</option>
-                    <option value="Lainnya">Lainnya</option>
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
+                    onChange={(val) => setFormData({...formData, category: val})}
+                    options={categoryOptions}
+                    placeholder={categoryOptions.length === 0 ? "Memuat Kategori..." : "Pilih Kategori Masalah..."}
+                  />
                 </div>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 flex flex-col relative z-40">
                 <label className="text-sm font-bold text-slate-900">Waktu Kejadian</label>
                 <div className="relative group">
                   <CalendarClock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
                   <input 
                     type="datetime-local"
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all font-semibold"
+                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all font-semibold"
                     value={formData.incident_time}
                     onChange={(e) => setFormData({...formData, incident_time: e.target.value})}
                     required
@@ -178,7 +203,7 @@ export default function CreateReportPage() {
             </div>
 
             {/* Baris 2: Lokasi & Titik GPS */}
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 relative z-30">
               <label className="text-sm font-bold text-slate-900">Lokasi Detail</label>
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1 group">
@@ -214,7 +239,7 @@ export default function CreateReportPage() {
             </div>
 
             {/* Baris 3: Deskripsi */}
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 relative z-20">
               <label className="text-sm font-bold text-slate-900">Deskripsi Masalah</label>
               <div className="relative group">
                 <AlignLeft className="absolute left-4 top-4 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
@@ -230,7 +255,7 @@ export default function CreateReportPage() {
             </div>
 
             {/* Baris 4: Upload Foto */}
-            <div className="space-y-4">
+            <div className="space-y-4 relative z-10">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold text-slate-900">Bukti Foto</label>
                 <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-md">{previews.length} / 5 Terunggah</span>
@@ -273,7 +298,7 @@ export default function CreateReportPage() {
               </div>
             </div>
 
-            <div className="pt-6 pb-12">
+            <div className="pt-6 pb-12 relative z-0">
               <button 
                 type="submit"
                 disabled={loading}

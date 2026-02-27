@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { 
   Send, ArrowLeft, Loader2, Lock, 
   CheckCircle2, ShieldAlert, MapPin, 
-  X, Download, ChevronDown // Ditambahkan ChevronDown untuk tombol floating
+  X, Download, ChevronDown, Hand
 } from 'lucide-react';
 import ReportDetailBubble from '@/components/ReportDetailBubble';
 
@@ -21,10 +21,10 @@ interface Message {
 
 interface ReportDetail {
   id: string;
-  category: string;
-  description: string;
+  category_name: string | null; 
+  description?: string; 
   status: string;
-  address: string;
+  address?: string;
   created_at: string;
   images?: { url: string }[];
 }
@@ -51,6 +51,7 @@ export default function UserChatPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const isChatClosed = ['RESOLVED', 'DONE', 'REJECTED'].includes(report?.status || '');
+  const isSubmitted = report?.status === 'SUBMITTED';
 
   // --- FETCH DATA ---
   const fetchData = async () => {
@@ -63,8 +64,8 @@ export default function UserChatPage() {
 
       if (msgResult.status === 'fulfilled') {
         const resMsg = msgResult.value;
-        const msgData = resMsg.data?.messages || resMsg.data?.data || [];
-        setMessages(msgData);
+        // Langsung set tanpa callback rumit
+        setMessages(resMsg.data?.messages || resMsg.data?.data || []);
       }
 
       if (reportResult.status === 'fulfilled') {
@@ -90,10 +91,10 @@ export default function UserChatPage() {
   }, [reportId]);
 
   /* =======================
-     AUTO SCROLL LOGIC (Seragam dengan Admin)
+     AUTO SCROLL LOGIC (Sama Persis Dengan Admin)
    ======================== */
-
-  // 1. Scroll ke bawah hanya saat pertama kali loading selesai
+  
+  // 1. Scroll otomatis ke paling bawah saat pertama kali dibuka
   useEffect(() => {
     if (!initialLoading && messages.length > 0 && !hasScrolledInitialRef.current) {
       setTimeout(() => {
@@ -103,7 +104,8 @@ export default function UserChatPage() {
     }
   }, [initialLoading, messages]);
 
-  // 2. Deteksi apakah ada pesan baru. Scroll jika user di bawah, munculkan tombol jika user di atas.
+  // 2. Jika ada pesan baru, scroll ke bawah HANYA JIKA user sedang di bawah.
+  // Jika sedang scroll ke atas, munculkan tombol.
   useEffect(() => {
     if (!initialLoading && isUserAtBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -113,20 +115,18 @@ export default function UserChatPage() {
     }
   }, [messages]);
 
-  // 3. Event handler ketika user scroll manual
+  // 3. Deteksi saat user men-scroll layar secara manual
   const handleScroll = () => {
     const el = chatContainerRef.current;
     if (!el) return;
 
-    // Anggap "berada di bawah" jika jarak scroll dengan bawah < 80px
     const threshold = 80;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
 
     isUserAtBottomRef.current = atBottom;
-    setShowNewMessageBtn(!atBottom);
+    setShowNewMessageBtn(!atBottom); // Memunculkan tombol jika sedang melihat riwayat atas
   };
 
-  // 4. Fungsi memanggil scroll ke bawah paksa (dipakai tombol & setelah kirim pesan)
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     isUserAtBottomRef.current = true;
@@ -139,7 +139,7 @@ export default function UserChatPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || isChatClosed) return;
+    if (!newMessage.trim() || isChatClosed || isSubmitted) return;
 
     setSending(true);
     try {
@@ -173,8 +173,9 @@ export default function UserChatPage() {
     }
   };
 
+  const displayCategory = report?.category_name || 'Laporan Umum';
+
   return (
-    // CONTAINER UTAMA: Full Screen
     <div className="flex flex-col h-screen w-full bg-[#EFEAE2] overflow-hidden relative">
       
       <style jsx global>{`
@@ -191,12 +192,12 @@ export default function UserChatPage() {
           
           <div className="flex flex-col min-w-0">
             <h1 className="font-bold text-slate-900 text-base leading-tight truncate">
-              {report?.category || 'Memuat Laporan...'}
+              {report ? displayCategory : 'Memuat Laporan...'}
             </h1>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={`w-2 h-2 rounded-full ${isChatClosed ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></span>
+              <span className={`w-2 h-2 rounded-full ${isChatClosed || isSubmitted ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></span>
               <p className="text-[11px] font-medium text-slate-500">
-                {isChatClosed ? 'Sesi Selesai' : 'Petugas Online'}
+                {isChatClosed ? 'Sesi Selesai' : isSubmitted ? 'Menunggu Petugas' : 'Petugas Online'}
               </p>
             </div>
           </div>
@@ -204,15 +205,16 @@ export default function UserChatPage() {
 
         <div className="shrink-0 pl-2">
            <div className={`px-3 py-1 rounded-full text-[10px] font-bold border tracking-wide uppercase shadow-sm ${
-             isChatClosed ? 'bg-slate-100 text-slate-600 border-slate-300' : 'bg-blue-100 text-blue-700 border-blue-200'
+             isChatClosed ? 'bg-slate-100 text-slate-600 border-slate-300' : 
+             isSubmitted ? 'bg-amber-100 text-amber-700 border-amber-200' : 
+             'bg-blue-100 text-blue-700 border-blue-200'
            }`}>
              {report?.status?.replace('_', ' ')}
            </div>
         </div>
       </div>
 
-      {/* === 2. CHAT AREA (Scrollable) === */}
-      {/* REF DITAMBAHKAN & ONSCROLL DITAMBAHKAN */}
+      {/* === 2. CHAT AREA === */}
       <div 
         ref={chatContainerRef}
         onScroll={handleScroll}
@@ -295,7 +297,7 @@ export default function UserChatPage() {
         </div>
       </div>
 
-      {/* === FLOATING BUTTON (New Message) === */}
+      {/* === FLOATING BUTTON === */}
       <AnimatePresence>
         {showNewMessageBtn && (
           <motion.button
@@ -303,12 +305,12 @@ export default function UserChatPage() {
             onClick={scrollToBottom}
             className="absolute bottom-24 right-6 z-20 flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-full shadow-xl hover:bg-slate-800 transition cursor-pointer"
           >
-            <span className="text-xs font-bold">Pesan Baru</span> <ChevronDown className="w-4 h-4" />
+            <span className="text-xs font-bold">Ke Bawah</span> <ChevronDown className="w-4 h-4" />
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* === 3. FOOTER INPUT (Mentok Full Width) === */}
+      {/* === 3. FOOTER INPUT === */}
       <div className="flex-none bg-[#F0F2F5] px-4 py-3 sm:px-6 lg:px-8 border-t border-slate-200 z-30 w-full">
         <div className="max-w-5xl mx-auto w-full">
           {isChatClosed ? (
@@ -322,6 +324,20 @@ export default function UserChatPage() {
               <div className="text-left">
                 <p className="text-sm font-bold text-slate-800">Laporan Selesai</p>
                 <p className="text-xs text-slate-500">Sesi percakapan ini telah ditutup.</p>
+              </div>
+            </motion.div>
+          ) : isSubmitted ? (
+            // BLOKIR INPUT JIKA STATUS MASIH SUBMITTED
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              className="bg-amber-50 rounded-2xl p-4 flex items-center justify-center gap-3 border border-dashed border-amber-200 shadow-sm w-full"
+            >
+              <div className="p-2 bg-amber-100 rounded-full">
+                  <Hand className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-bold text-amber-800">Menunggu Petugas</p>
+                <p className="text-xs text-amber-700">Percakapan akan aktif setelah petugas mengambil laporan ini.</p>
               </div>
             </motion.div>
           ) : (

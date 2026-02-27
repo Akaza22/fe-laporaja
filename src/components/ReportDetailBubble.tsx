@@ -2,9 +2,9 @@ import { MapPin, ImageIcon, Calendar } from 'lucide-react';
 
 interface ReportDetailProps {
   report: {
-    category: string;
-    description: string;
-    address: string;
+    category_name: string | null; // Disesuaikan dengan backend baru
+    description?: string;         // Dibuat opsional
+    address?: string;             // Dibuat opsional
     created_at: string;
     images?: { url: string }[];
   };
@@ -33,17 +33,21 @@ export default function ReportDetailBubble({ report, onImageClick }: ReportDetai
           
           {/* Kategori & Deskripsi */}
           <div>
-            <h3 className="font-bold text-slate-900 text-sm mb-1">{report.category}</h3>
+            <h3 className="font-bold text-slate-900 text-sm mb-1">
+              {report.category_name || 'Laporan Umum'}
+            </h3>
             <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
-              {report.description}
+              {report.description || 'Tidak ada deskripsi yang diberikan.'}
             </p>
           </div>
 
           {/* Lokasi */}
-          <div className="flex items-start gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-            <MapPin className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-            <span className="text-xs text-slate-700 font-medium leading-tight">{report.address}</span>
-          </div>
+          {report.address && (
+            <div className="flex items-start gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <MapPin className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <span className="text-xs text-slate-700 font-medium leading-tight">{report.address}</span>
+            </div>
+          )}
 
           {/* Grid Gambar (Jika ada) */}
           {report.images && report.images.length > 0 && (
