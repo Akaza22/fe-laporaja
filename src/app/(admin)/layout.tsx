@@ -300,7 +300,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Link>
 
               {/* ITEM 5: STATISTIK */}
-              <Link href="/" className="relative flex-1 flex justify-center z-10" title="Statistik">
+              <Link href="/analytics" className="relative flex-1 flex justify-center z-10" title="Statistik">
                 {pathname.startsWith('/analytics') && (
                   <motion.div 
                     layoutId="nav-bubble"

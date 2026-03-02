@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Settings, UserCog, Shield, BellRing, 
@@ -15,14 +15,26 @@ const TABS = [
   { id: 'notifications', label: 'Notifikasi', icon: BellRing, desc: 'Preferensi pemberitahuan' },
 ];
 
+// OPTIMASI 1: Pisahkan komponen ke luar main function dan gunakan React.memo
+// Agar komponen ini tidak dirender ulang secara sia-sia setiap kali kita mengetik di input form lain
+const ToggleSwitch = memo(({ checked, onChange, label, desc }: any) => (
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 md:p-5 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition-colors" onClick={onChange}>
+    <div className="flex-1 pr-4">
+      <p className="text-sm font-bold text-slate-900">{label}</p>
+      <p className="text-xs font-medium text-slate-500 mt-1 leading-relaxed">{desc}</p>
+    </div>
+    <div className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-300 shrink-0 ${checked ? 'bg-blue-600' : 'bg-slate-300'}`}>
+      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${checked ? 'translate-x-6' : 'translate-x-0'}`} />
+    </div>
+  </div>
+));
+ToggleSwitch.displayName = 'ToggleSwitch';
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
-  const [loadingInit, setLoadingInit] = useState(false);
+  const [loadingInit, setLoadingInit] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // ==========================================
-  // STATE UNTUK FORM
-  // ==========================================
   const [profileForm, setProfileForm] = useState({
     full_name: '', phone: '', email: '',
     old_password: '', new_password: ''
@@ -37,41 +49,46 @@ export default function SettingsPage() {
     email_new_report: true, email_urgent_only: false
   });
 
-  // ==========================================
-  // FETCH DATA AWAL (Profil & Setting Sistem)
-  // ==========================================
+  // OPTIMASI 2: Paralel Fetch Data menggunakan Promise.allSettled
   useEffect(() => {
     const fetchSettingsData = async () => {
       setLoadingInit(true);
       try {
-        const resMe = await api.get('/users/profile');
-        const user = resMe.data.user || resMe.data.data;
-        
-        if (user) {
-          setProfileForm(prev => ({ 
-            ...prev, 
-            full_name: user.full_name || user.name || '', 
-            phone: user.phone || '',
-            email: user.email || ''
-          }));
+        // Fetch dua endpoint secara bersamaan agar waktu tunggu 2x lebih cepat
+        const [resMeResult, resSysResult] = await Promise.allSettled([
+          api.get('/users/profile'),
+          api.get('/system/settings')
+        ]);
+
+        // Proses Data Profil
+        if (resMeResult.status === 'fulfilled') {
+          const user = resMeResult.value.data?.user || resMeResult.value.data?.data;
+          if (user) {
+            setProfileForm(prev => ({ 
+              ...prev, 
+              full_name: user.full_name || user.name || '', 
+              phone: user.phone || '',
+              email: user.email || ''
+            }));
+          }
+        } else {
+          console.error("Gagal load profil admin", resMeResult.reason);
+          notify.error("Gagal memuat data profil.");
         }
 
-        try {
-          const resSys = await api.get('/system/settings');
-          const sysData = resSys.data.data || resSys.data;
+        // Proses Data Sistem
+        if (resSysResult.status === 'fulfilled') {
+          const sysData = resSysResult.value.data?.data || resSysResult.value.data;
           if (sysData) {
             setSystemForm({
               maintenance_mode: Boolean(sysData.maintenance_mode),
               max_upload_size: sysData.max_upload_size || 2
             });
           }
-        } catch (sysErr) {
-          console.error("Gagal load system settings (Mungkin belum disetup)", sysErr);
+        } else {
+          console.warn("Info: Endpoint system/settings belum siap atau kosong.", resSysResult.reason);
         }
         
-      } catch (err) {
-        console.error("Gagal load profil admin:", err);
-        notify.error("Gagal memuat data pengaturan.");
       } finally {
         setLoadingInit(false);
       }
@@ -79,13 +96,9 @@ export default function SettingsPage() {
     fetchSettingsData();
   }, []);
 
-  // ==========================================
-  // HANDLER SIMPAN DATA PROFIL & KEAMANAN
-  // ==========================================
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    
     try {
       await api.patch('/users/profile', { 
         full_name: profileForm.full_name, 
@@ -101,7 +114,6 @@ export default function SettingsPage() {
 
       notify.success("Profil berhasil diperbarui!");
       setProfileForm(prev => ({ ...prev, old_password: '', new_password: '' })); 
-
     } catch(err: any) { 
       notify.error(err.response?.data?.message || "Gagal memperbarui profil."); 
     } finally {
@@ -109,9 +121,6 @@ export default function SettingsPage() {
     }
   };
 
-  // ==========================================
-  // HANDLER SIMPAN DATA SISTEM
-  // ==========================================
   const handleSaveSystem = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -127,19 +136,6 @@ export default function SettingsPage() {
       setSaving(false);
     }
   };
-
-  // Komponen Toggle Switch Custom
-  const ToggleSwitch = ({ checked, onChange, label, desc }: any) => (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 md:p-5 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition-colors" onClick={onChange}>
-      <div className="flex-1 pr-4">
-        <p className="text-sm font-bold text-slate-900">{label}</p>
-        <p className="text-xs font-medium text-slate-500 mt-1 leading-relaxed">{desc}</p>
-      </div>
-      <div className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-300 shrink-0 ${checked ? 'bg-blue-600' : 'bg-slate-300'}`}>
-        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${checked ? 'translate-x-6' : 'translate-x-0'}`} />
-      </div>
-    </div>
-  );
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-80px)] xl:h-[calc(100vh-100px)] space-y-4 md:space-y-6 relative font-sans max-w-[1400px] mx-auto w-full pb-24 xl:pb-0">
@@ -160,7 +156,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* --- KONTEN UTAMA (SIDEBAR + FORM) --- */}
+      {/* --- KONTEN UTAMA --- */}
       <div className="flex flex-col xl:flex-row gap-6 items-start">
         
         {/* KIRI: SIDEBAR NAVIGASI TABS */}
@@ -177,16 +173,12 @@ export default function SettingsPage() {
               title={tab.label}
             >
               <tab.icon className={`w-5 h-5 xl:w-6 xl:h-6 shrink-0 ${activeTab === tab.id ? 'text-white' : 'text-slate-400'}`} />
-              
-              {/* Teks Lengkap (Hanya tampil di Desktop/Layar super lebar xl ke atas) */}
               <div className="hidden xl:block">
                 <p className="font-black text-sm">{tab.label}</p>
                 <p className={`text-[10px] font-bold mt-0.5 ${activeTab === tab.id ? 'text-blue-100' : 'text-slate-400'}`}>
                   {tab.desc}
                 </p>
               </div>
-
-              {/* Teks Singkat (Hanya tampil di Tablet sm - md) */}
               <span className="hidden sm:block xl:hidden font-black text-[10px] md:text-xs truncate px-1">
                 {tab.label}
               </span>
@@ -213,7 +205,6 @@ export default function SettingsPage() {
                   </div>
 
                   <form onSubmit={handleSaveProfile} className="space-y-6">
-                    {/* Data Diri */}
                     <div className="space-y-4">
                       <h4 className="text-[11px] md:text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><UserCog className="w-4 h-4"/> Informasi Pribadi</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
@@ -237,7 +228,6 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* Ubah Password */}
                     <div className="space-y-4 pt-6 border-t border-slate-100">
                       <h4 className="text-[11px] md:text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Shield className="w-4 h-4"/> Ubah Kata Sandi</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
@@ -253,7 +243,6 @@ export default function SettingsPage() {
                       <p className="text-[10px] md:text-xs text-slate-400 font-medium italic">*Kosongkan kolom kata sandi jika tidak ingin mengubahnya.</p>
                     </div>
 
-                    {/* Tombol Simpan */}
                     <div className="flex justify-end pt-4">
                       <button type="submit" disabled={saving} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-8 py-3.5 rounded-[16px] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all disabled:opacity-70">
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Simpan Profil
@@ -272,7 +261,6 @@ export default function SettingsPage() {
                   </div>
 
                   <form onSubmit={handleSaveSystem} className="space-y-5 md:space-y-6">
-                    
                     <ToggleSwitch 
                       label="Maintenance Mode (Mode Pemeliharaan)" 
                       desc="Jika aktif, warga tidak dapat membuat laporan baru sementara waktu."
