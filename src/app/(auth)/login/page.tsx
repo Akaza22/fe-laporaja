@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { notify } from '@/lib/notify'; // <-- Import notify
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,6 +18,10 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    // Menampilkan toast loading
+    const toastId = notify.loading('Memproses...', 'Sedang memverifikasi data Anda.');
+
     try {
       const resLogin = await api.post('/auth/login', { email, password });
       const token = resLogin.data.token;
@@ -29,14 +34,23 @@ export default function LoginPage() {
 
       const userRole = resMe.data.user?.role;
 
+      // Update toast menjadi sukses
+      notify.update(toastId, 'success', 'Login Berhasil', 'Selamat datang kembali!');
+
       if (userRole && userRole.toUpperCase() === 'ADMIN') {
         router.replace('/dashboard'); 
       } else {
         router.replace('/user'); 
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Login Gagal. Periksa kembali email dan password Anda.');
+      
+      // Mengambil pesan error dari backend jika ada
+      const errorMessage = err.response?.data?.message || 'Periksa kembali email dan kata sandi Anda.';
+      
+      // Update toast menjadi error
+      notify.update(toastId, 'error', 'Login Gagal', errorMessage);
+      
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +65,7 @@ export default function LoginPage() {
     >
       {/* === HEADER: LOGO LAPORAJA (CENTERED) === */}
       <div className="flex flex-col items-center justify-center mb-10 sm:mb-12">
-        <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30 mb-4">
+        <div className="w-14 h-14 bg-blue-600 rounded-[20px] flex items-center justify-center shadow-lg shadow-blue-600/30 mb-4">
           <span className="font-extrabold text-2xl text-white">L</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
@@ -75,6 +89,7 @@ export default function LoginPage() {
             value={email} 
             onChange={(e) => setEmail(e.target.value)}
             required 
+            disabled={isLoading}
           />
         </div>
 
@@ -82,7 +97,7 @@ export default function LoginPage() {
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label className="text-sm font-bold text-slate-700">Kata Sandi</label>
-            <Link href="#" className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">
+            <Link href="#" className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors">
               Lupa Kata Sandi?
             </Link>
           </div>
@@ -93,6 +108,7 @@ export default function LoginPage() {
             value={password} 
             onChange={(e) => setPassword(e.target.value)}
             required 
+            disabled={isLoading}
           />
         </div>
 

@@ -14,7 +14,7 @@ import {
   BarChart3,
   Tags,
   Settings,
-  ChevronRight
+  ChevronRight, Bookmark, LogOut as LogOutIcon
 } from 'lucide-react';
 import { deleteCookie } from 'cookies-next';
 import api from '@/lib/axios';
@@ -158,7 +158,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto hide-scrollbar">
             
             <p className="px-4 text-xs font-bold tracking-widest text-slate-500 uppercase mb-4 mt-2">Menu Utama</p>
-            <SidebarMenuItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" isActive={pathname === '/dashboard'} />
+            <SidebarMenuItem href="/dashboard" icon={LayoutDashboard} label="Beranda" isActive={pathname === '/dashboard'} />
             <SidebarMenuItem href="/reports" icon={FileText} label="Laporan" isActive={pathname.startsWith('/reports')} />
             <SidebarMenuItem href="/user-manage" icon={Users} label="Manajemen Pengguna" isActive={pathname.startsWith('/user-manage')} />
 
@@ -166,8 +166,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="pt-6">
               <p className="px-4 text-xs font-bold tracking-widest text-slate-500 uppercase mb-4">Analitik & Sistem</p>
               <SidebarMenuItem href="/categories" icon={Tags} label="Kategori" isActive={pathname === '/categories'} />
-              <SidebarMenuItem href="/analytics" icon={BarChart3} label="Statistik" disabled />
-              <SidebarMenuItem href="/settings" icon={Settings} label="Pengaturan" disabled />
+              <SidebarMenuItem href="/analytics" icon={BarChart3} label="Statistik" isActive={pathname === '/analytics'} />
+              <SidebarMenuItem href="/settings" icon={Settings} label="Pengaturan" isActive={pathname === '/settings'}   />
             </div>
 
           </nav>
@@ -211,43 +211,153 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* ================= BOTTOM NAV (MOBILE ONLY) ================= */}
         {!isChatPage && (
-          <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 z-50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-            <div className="flex items-center justify-between max-w-sm mx-auto">
+          <nav className="lg:hidden fixed bottom-6 left-4 right-4 z-50 pointer-events-none">
+            {/* Floating Pill Container */}
+            <div className="w-full max-w-md mx-auto bg-white/85 backdrop-blur-xl border border-slate-200/60 p-1.5 md:p-2 rounded-[28px] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] flex items-center justify-between pointer-events-auto">
 
-              <Link href="/dashboard">
-                <div className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${
-                  pathname === '/dashboard' ? 'text-blue-600' : 'text-slate-400 hover:bg-slate-50'
-                }`}>
-                  <Home className={`w-6 h-6 ${pathname === '/dashboard' ? 'fill-blue-50' : ''}`} />
-                  <span className="text-[10px] font-bold">Home</span>
-                </div>
+              {/* ITEM 1: HOME */}
+              <Link href="/dashboard" className="relative flex-1 flex justify-center z-10" title="Home">
+                {pathname === '/dashboard' && (
+                  <motion.div 
+                    layoutId="nav-bubble"
+                    className="absolute inset-0 bg-blue-50 border border-blue-100/50 rounded-[20px] -z-10"
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                )}
+                <motion.div 
+                  whileTap={{ scale: 0.9 }}
+                  animate={{ y: pathname === '/dashboard' ? -2 : 0 }}
+                  className={`flex flex-col items-center justify-center gap-1 p-2 w-full h-full transition-colors ${
+                    pathname === '/dashboard' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <Home className={`w-5 h-5 md:w-5 md:h-5 ${pathname === '/dashboard' ? 'fill-blue-100' : ''}`} />
+                  <span className={`text-[9px] md:text-[10px] font-black transition-all hidden sm:block ${pathname === '/dashboard' ? 'opacity-100' : 'opacity-70'}`}>Home</span>
+                </motion.div>
               </Link>
 
-              <Link href="/reports">
-                <div className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${
-                  pathname.startsWith('/reports') ? 'text-blue-600' : 'text-slate-400 hover:bg-slate-50'
-                }`}>
-                  <FileText className={`w-6 h-6 ${pathname.startsWith('/reports') ? 'fill-blue-50' : ''}`} />
-                  <span className="text-[10px] font-bold">Laporan</span>
-                </div>
+              {/* ITEM 2: LAPORAN */}
+              <Link href="/reports" className="relative flex-1 flex justify-center z-10" title="Laporan">
+                {pathname.startsWith('/reports') && (
+                  <motion.div 
+                    layoutId="nav-bubble"
+                    className="absolute inset-0 bg-blue-50 border border-blue-100/50 rounded-[20px] -z-10"
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                )}
+                <motion.div 
+                  whileTap={{ scale: 0.9 }}
+                  animate={{ y: pathname.startsWith('/reports') ? -2 : 0 }}
+                  className={`flex flex-col items-center justify-center gap-1 p-2 w-full h-full transition-colors ${
+                    pathname.startsWith('/reports') ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <FileText className={`w-5 h-5 md:w-5 md:h-5 ${pathname.startsWith('/reports') ? 'fill-blue-100' : ''}`} />
+                  <span className={`text-[9px] md:text-[10px] font-black transition-all hidden sm:block ${pathname.startsWith('/reports') ? 'opacity-100' : 'opacity-70'}`}>Laporan</span>
+                </motion.div>
               </Link>
 
-              <Link href="/users">
-                <div className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${
-                  pathname.startsWith('/users') ? 'text-blue-600' : 'text-slate-400 hover:bg-slate-50'
-                }`}>
-                  <Users className={`w-6 h-6 ${pathname.startsWith('/users') ? 'fill-blue-50' : ''}`} />
-                  <span className="text-[10px] font-bold">Warga</span>
-                </div>
+              {/* ITEM 3: PENGGUNA */}
+              <Link href="/user-manage" className="relative flex-1 flex justify-center z-10" title="Pengguna">
+                {pathname.startsWith('/user-manage') && (
+                  <motion.div 
+                    layoutId="nav-bubble"
+                    className="absolute inset-0 bg-blue-50 border border-blue-100/50 rounded-[20px] -z-10"
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                )}
+                <motion.div 
+                  whileTap={{ scale: 0.9 }}
+                  animate={{ y: pathname.startsWith('/user-manage') ? -2 : 0 }}
+                  className={`flex flex-col items-center justify-center gap-1 p-2 w-full h-full transition-colors ${
+                    pathname.startsWith('/user-manage') ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <Users className={`w-5 h-5 md:w-5 md:h-5 ${pathname.startsWith('/user-manage') ? 'fill-blue-100' : ''}`} />
+                  <span className={`text-[9px] md:text-[10px] font-black transition-all hidden sm:block ${pathname.startsWith('/user-manage') ? 'opacity-100' : 'opacity-70'}`}>Pengguna</span>
+                </motion.div>
               </Link>
 
-              <button
-                onClick={handleLogout}
-                className="flex flex-col items-center gap-1 p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-              >
-                <LogOut className="w-6 h-6" />
-                <span className="text-[10px] font-bold">Keluar</span>
-              </button>
+              {/* ITEM 4: KATEGORI */}
+              <Link href="/categories" className="relative flex-1 flex justify-center z-10" title="Kategori">
+                {pathname.startsWith('/categories') && (
+                  <motion.div 
+                    layoutId="nav-bubble"
+                    className="absolute inset-0 bg-blue-50 border border-blue-100/50 rounded-[20px] -z-10"
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                )}
+                <motion.div 
+                  whileTap={{ scale: 0.9 }}
+                  animate={{ y: pathname.startsWith('/categories') ? -2 : 0 }}
+                  className={`flex flex-col items-center justify-center gap-1 p-2 w-full h-full transition-colors ${
+                    pathname.startsWith('/categories') ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <Bookmark className={`w-5 h-5 md:w-5 md:h-5 ${pathname.startsWith('/categories') ? 'fill-blue-100' : ''}`} />
+                  <span className={`text-[9px] md:text-[10px] font-black transition-all hidden sm:block ${pathname.startsWith('/categories') ? 'opacity-100' : 'opacity-70'}`}>Kategori</span>
+                </motion.div>
+              </Link>
+
+              {/* ITEM 5: STATISTIK */}
+              <Link href="/" className="relative flex-1 flex justify-center z-10" title="Statistik">
+                {pathname.startsWith('/analytics') && (
+                  <motion.div 
+                    layoutId="nav-bubble"
+                    className="absolute inset-0 bg-blue-50 border border-blue-100/50 rounded-[20px] -z-10"
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                )}
+                <motion.div 
+                  whileTap={{ scale: 0.9 }}
+                  animate={{ y: pathname.startsWith('/analytics') ? -2 : 0 }}
+                  className={`flex flex-col items-center justify-center gap-1 p-2 w-full h-full transition-colors ${
+                    pathname.startsWith('/analytics') ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <BarChart3 className={`w-5 h-5 md:w-5 md:h-5 ${pathname.startsWith('/analytics') ? 'fill-blue-100' : ''}`} />
+                  <span className={`text-[9px] md:text-[10px] font-black transition-all hidden sm:block ${pathname.startsWith('/analytics') ? 'opacity-100' : 'opacity-70'}`}>Statistik</span>
+                </motion.div>
+              </Link>
+
+              {/* ITEM 6: PENGATURAN */}
+              <Link href="/settings" className="relative flex-1 flex justify-center z-10" title="Pengaturan">
+                {pathname.startsWith('/settings') && (
+                  <motion.div 
+                    layoutId="nav-bubble"
+                    className="absolute inset-0 bg-blue-50 border border-blue-100/50 rounded-[20px] -z-10"
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                )}
+                <motion.div 
+                  whileTap={{ scale: 0.9 }}
+                  animate={{ y: pathname.startsWith('/settings') ? -2 : 0 }}
+                  className={`flex flex-col items-center justify-center gap-1 p-2 w-full h-full transition-colors ${
+                    pathname.startsWith('/settings') ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <Settings className={`w-5 h-5 md:w-5 md:h-5 ${pathname.startsWith('/settings') ? 'fill-blue-100' : ''}`} />
+                  <span className={`text-[9px] md:text-[10px] font-black transition-all hidden sm:block ${pathname.startsWith('/settings') ? 'opacity-100' : 'opacity-70'}`}>Setting</span>
+                </motion.div>
+              </Link>
+
+              {/* Garis Pemisah (Divider) */}
+              <div className="w-[1px] h-6 bg-slate-200 mx-0.5 rounded-full shrink-0"></div>
+
+              {/* ITEM 7: LOGOUT */}
+              <div className="relative flex-1 flex justify-center z-10" title="Keluar">
+                <motion.button
+                  onClick={handleLogout}
+                  whileTap={{ scale: 0.9 }}
+                  className="flex flex-col items-center justify-center gap-1 p-2 w-full h-full text-slate-400 hover:text-rose-500 transition-colors group"
+                >
+                  <div className="p-1 rounded-full group-hover:bg-rose-50 transition-colors">
+                    <LogOut className="w-5 h-5 md:w-5 md:h-5 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                  <span className="text-[9px] md:text-[10px] font-black opacity-70 group-hover:opacity-100 group-hover:text-rose-500 hidden sm:block">Keluar</span>
+                </motion.button>
+              </div>
+
             </div>
           </nav>
         )}

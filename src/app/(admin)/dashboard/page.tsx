@@ -1,314 +1,185 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import api from '@/lib/axios';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { 
-  Users, AlertCircle, CheckCircle2, Activity, 
-  ArrowUpRight, ArrowDownRight, Calendar 
+  FileText, Users, Tags, BarChart3, 
+  Settings, BellRing, UserCheck, ShieldAlert
 } from 'lucide-react';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, Legend 
-} from 'recharts';
+import api from '@/lib/axios';
 
-// Warna Grafik
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1'];
+// Konfigurasi Menu Grid Utama
+const MENU_ITEMS = [
+  {
+    title: 'Kelola Laporan',
+    description: 'Tinjau dan balas aduan warga',
+    icon: FileText,
+    href: '/reports',
+    color: 'bg-blue-500',
+    lightBg: 'bg-blue-50',
+    textColor: 'text-blue-600',
+  },
+  {
+    title: 'Manajemen Warga',
+    description: 'Atur akun dan akses pengguna',
+    icon: Users,
+    href: '/user-manage',
+    color: 'bg-indigo-500',
+    lightBg: 'bg-indigo-50',
+    textColor: 'text-indigo-600',
+  },
+  {
+    title: 'Statistik & Data',
+    description: 'Lihat tren dan performa sistem',
+    icon: BarChart3,
+    href: '/analytics', // <-- Arahkan ke halaman baru
+    color: 'bg-emerald-500',
+    lightBg: 'bg-emerald-50',
+    textColor: 'text-emerald-600',
+  },
+  {
+    title: 'Master Kategori',
+    description: 'Atur jenis klasifikasi laporan',
+    icon: Tags,
+    href: '/categories',
+    color: 'bg-amber-500',
+    lightBg: 'bg-amber-50',
+    textColor: 'text-amber-600',
+  },
+];
 
-export default function AdminDashboard() {
+// Konfigurasi Menu Aksi Cepat (Bawah)
+const QUICK_ACTIONS = [
+  { label: 'Verifikasi Akun', icon: UserCheck, href: '/users?tab=unverified' },
+  { label: 'Laporan Darurat', icon: ShieldAlert, href: '/reports?filter=urgent' },
+  { label: 'Notifikasi', icon: BellRing, href: '#' },
+  { label: 'Pengaturan', icon: Settings, href: '#' },
+];
+
+export default function AdminHomePage() {
+  const [adminName, setAdminName] = useState('Admin');
+  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  
-  // State Data Real
-  const [summary, setSummary] = useState({
-    total_reports: 0,
-    pending_reports: 0,
-    resolved_reports: 0,
-    total_users: 0,
-    growth_percentage: 0 // Optional jika backend kirim
-  });
-  
-  const [chartData, setChartData] = useState([]); // Untuk Area Chart
-  const [pieData, setPieData] = useState([]);     // Untuk Pie Chart
-  const [recentUsers, setRecentUsers] = useState<any[]>([]); // Untuk Tabel User
 
-  // Fetch Semua Data Dashboard
+  // Mengambil nama admin & jumlah laporan masuk (Opsional, untuk pemanis Header)
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchMinimalData = async () => {
       try {
-        setLoading(true);
-        
-        // Request Paralel ke 2 Endpoint
-        const [resAnalytics, resUsers] = await Promise.all([
-          api.get('/admin/dashboard/analytics'),
-          api.get('/users?limit=5&sort=created_at:desc') // Ambil 5 user terbaru
+        const [resMe, resAnalytics] = await Promise.all([
+          api.get('/me'),
+          api.get('/admin/dashboard/analytics')
         ]);
-
-        // 1. Set Data Statistik & Grafik
-        const stats = resAnalytics.data.data;
         
-        if (stats) {
-          setSummary({
-            total_reports: stats.summary?.total_reports || 0,
-            pending_reports: stats.summary?.pending_reports || 0,
-            resolved_reports: stats.summary?.resolved_reports || 0,
-            total_users: stats.summary?.total_users || 0,
-            growth_percentage: stats.summary?.growth_percentage || 0
-          });
+        const name = resMe.data.user?.full_name || resMe.data.data?.full_name;
+        if (name) setAdminName(name.split(' ')[0]); // Ambil nama panggilan
 
-          // Mapping data grafik (pastikan key sesuai response backend: 'incoming', 'resolved')
-          setChartData(stats.monthly_trends || []); 
-          setPieData(stats.category_distribution || []);
-        }
-
-        // 2. Set Data Tabel User
-        // Handle response array langsung atau wrapped object
-        const userData = Array.isArray(resUsers.data) ? resUsers.data : resUsers.data.data || [];
-        setRecentUsers(userData);
+        const pending = resAnalytics.data.data?.summary?.pending_reports;
+        if (pending) setPendingCount(pending);
 
       } catch (err) {
-        console.error("Gagal load dashboard data:", err);
+        console.error("Gagal load data awal", err);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchDashboardData();
+    fetchMinimalData();
   }, []);
 
-  // Komponen Card Statistik Kecil
-  const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
-    >
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
-          <h3 className="text-3xl font-extrabold text-slate-900">{loading ? "..." : value}</h3>
-        </div>
-        <div className={`p-3 rounded-xl ${color}`}>
-          <Icon className="w-6 h-6" />
-        </div>
-      </div>
-      
-      {/* Trend Indicator (Optional: Jika backend kirim growth data) */}
-      <div className="mt-4 flex items-center gap-2 text-xs font-medium">
-        {trend >= 0 ? (
-          <span className="text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-full">
-            <ArrowUpRight className="w-3 h-3" /> +{trend}%
-          </span>
-        ) : (
-          <span className="text-rose-600 flex items-center gap-1 bg-rose-50 px-2 py-1 rounded-full">
-            <ArrowDownRight className="w-3 h-3" /> {trend}%
-          </span>
-        )}
-        <span className="text-slate-400">vs bulan lalu</span>
-      </div>
-    </motion.div>
-  );
-
   return (
-    <div className="space-y-6 pb-10">
+    <div className="min-h-full font-sans pb-24 md:pb-8 max-w-5xl mx-auto">
       
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard Overview</h1>
-          <p className="text-slate-500">Analisis performa aplikasi dan statistik warga.</p>
-        </div>
-        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm text-sm font-medium text-slate-600">
-          <Calendar className="w-4 h-4 text-slate-400" />
-          <span>{new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}</span>
-        </div>
-      </div>
-
-      {/* 1. ROW STATISTIK UTAMA (REAL DATA) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Total Laporan" 
-          value={summary.total_reports} 
-          icon={Activity} 
-          color="bg-blue-50 text-blue-600" 
-          trend={12.5} // Dummy trend sementara
-        />
-        <StatCard 
-          title="Perlu Tindakan" 
-          value={summary.pending_reports} 
-          icon={AlertCircle} 
-          color="bg-amber-50 text-amber-600" 
-          trend={5.2}
-        />
-        <StatCard 
-          title="Laporan Selesai" 
-          value={summary.resolved_reports} 
-          icon={CheckCircle2} 
-          color="bg-emerald-50 text-emerald-600" 
-          trend={8.4}
-        />
-        <StatCard 
-          title="User Terdaftar" 
-          value={summary.total_users} 
-          icon={Users} 
-          color="bg-violet-50 text-violet-600" 
-          trend={summary.growth_percentage || 0}
-        />
-      </div>
-
-      {/* 2. ROW GRAFIK (REAL DATA) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 1. WELCOME HEADER (Gaya App) */}
+      <div className="bg-slate-900 rounded-[32px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-slate-900/20 mb-8 mt-2">
+        <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-blue-500 rounded-full mix-blend-screen filter blur-[80px] opacity-30 translate-x-1/4 -translate-y-1/4 pointer-events-none"></div>
         
-        {/* Grafik Area: Tren Laporan */}
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-          className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"
-        >
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-slate-900">Analisis Tren Laporan</h3>
-            <p className="text-sm text-slate-500">Perbandingan laporan masuk vs diselesaikan tahun ini</p>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <p className="text-blue-400 font-black tracking-widest text-xs uppercase mb-2">Selamat Bertugas,</p>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">Halo, {adminName} 👋</h1>
+            <p className="text-slate-400 font-medium text-sm max-w-md leading-relaxed">
+              Pilih menu di bawah untuk mengelola sistem atau melihat laporan terbaru hari ini.
+            </p>
           </div>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorMasuk" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorSelesai" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                <CartesianGrid vertical={false} stroke="#f1f5f9" />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Area type="monotone" dataKey="incoming" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorMasuk)" name="Masuk" />
-                <Area type="monotone" dataKey="resolved" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorSelesai)" name="Selesai" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
-
-        {/* Grafik Pie: Distribusi Kategori */}
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col"
-        >
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-slate-900">Kategori Laporan</h3>
-            <p className="text-sm text-slate-500">Distribusi jenis aduan</p>
-          </div>
-          <div className="flex-1 min-h-[250px] relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {pieData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend verticalAlign="bottom" height={36}/>
-              </PieChart>
-            </ResponsiveContainer>
-            
-            {/* Center Text: Total Laporan dari Data Pie */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
-              <div className="text-center">
-                <span className="text-2xl font-bold text-slate-900">
-                  {pieData.reduce((acc: any, curr: any) => acc + curr.value, 0)}
-                </span>
-                <p className="text-[10px] text-slate-400 uppercase">Total</p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+          
+          {/* Notifikasi Badge di Header */}
+          {!loading && pendingCount > 0 && (
+            <Link href="/reports">
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-3xl flex items-center gap-4 hover:bg-white/20 transition-colors cursor-pointer group"
+              >
+                <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform">
+                  <BellRing className="w-6 h-6 animate-[wiggle_1s_ease-in-out_infinite]" />
+                </div>
+                <div>
+                  <p className="text-3xl font-black leading-none">{pendingCount}</p>
+                  <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest mt-1">Laporan Baru</p>
+                </div>
+              </motion.div>
+            </Link>
+          )}
+        </div>
       </div>
 
-      {/* 3. ROW USER TERBARU (REAL DATA) & SIDE STATS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Tabel User Terbaru */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="font-bold text-slate-900">Registrasi User Terbaru</h3>
-            
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
-                <tr>
-                  <th className="p-4">Nama User</th>
-                  <th className="p-4">Role</th>
-                  <th className="p-4">Tanggal Daftar</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {recentUsers.length === 0 ? (
-                   <tr><td colSpan={3} className="p-4 text-center text-slate-400">Belum ada user baru.</td></tr>
-                ) : (
-                  recentUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-slate-50">
-                      <td className="p-4">
-                        <div className="font-medium text-slate-900">{user.full_name || user.name}</div>
-                        <div className="text-xs text-slate-400">{user.email}</div>
-                      </td>
-                      <td className="p-4">
-                        <span className="px-2 py-1 bg-slate-100 rounded text-xs font-bold text-slate-600 uppercase">{user.role}</span>
-                      </td>
-                      <td className="p-4 text-slate-500 text-xs">
-                        {new Date(user.created_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Quick Insights / Info Panel (Static/Dummy untuk hiasan dashboard) */}
-        <div className="bg-slate-900 rounded-2xl p-8 text-white flex flex-col justify-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-10 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
-          <div className="relative z-10">
-            <h3 className="text-2xl font-bold mb-2">Performa Sistem Optimal 🚀</h3>
-            <p className="text-slate-400 mb-6">Semua sistem berjalan lancar. Tidak ada lonjakan laporan aneh yang terdeteksi hari ini.</p>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-sm text-slate-400">Server Uptime</span>
-                <span className="font-bold text-emerald-400">99.9%</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-sm text-slate-400">Response Time</span>
-                <span className="font-bold text-blue-400">~200ms</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-400">Database Load</span>
-                <span className="font-bold text-amber-400">Low (12%)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      {/* 2. MENU GRID UTAMA */}
+      <div className="mb-4 px-2">
+        <h3 className="text-base font-black text-slate-900 tracking-tight">Menu Utama</h3>
       </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-10">
+        {MENU_ITEMS.map((item, idx) => (
+          <Link href={item.href} key={idx}>
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              whileHover={{ y: -4 }}
+              whileTap={{ scale: 0.98 }}
+              className="bg-white p-6 rounded-[28px] border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all group flex items-center gap-5 cursor-pointer h-full"
+            >
+              {/* Icon Container */}
+              <div className={`w-16 h-16 rounded-[20px] ${item.lightBg} flex items-center justify-center shrink-0 border border-white group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
+                <item.icon className={`w-7 h-7 ${item.textColor}`} />
+              </div>
+              
+              {/* Text Container */}
+              <div>
+                <h4 className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors mb-1">
+                  {item.title}
+                </h4>
+                <p className="text-xs font-bold text-slate-500 line-clamp-2 pr-4">
+                  {item.description}
+                </p>
+              </div>
+            </motion.div>
+          </Link>
+        ))}
+      </div>
+
+      {/* 3. QUICK ACTIONS (Gaya Pill / Tombol Bulat) */}
+      <div className="mb-4 px-2">
+        <h3 className="text-base font-black text-slate-900 tracking-tight">Aksi Cepat</h3>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        {QUICK_ACTIONS.map((action, idx) => (
+          <Link href={action.href} key={idx}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 + (idx * 0.05) }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-slate-50 hover:bg-slate-900 hover:text-white text-slate-700 border border-slate-200 hover:border-slate-900 p-4 rounded-2xl flex flex-col items-center justify-center text-center gap-3 transition-colors group cursor-pointer h-full"
+            >
+              <action.icon className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+              <span className="text-[11px] font-black uppercase tracking-widest">{action.label}</span>
+            </motion.div>
+          </Link>
+        ))}
+      </div>
+
     </div>
   );
 }
-
-

@@ -126,7 +126,7 @@ export default function UserDetailPage() {
                 
                 <div className="flex-1">
                   <p className="text-xs font-black text-blue-600 uppercase tracking-widest mb-1">
-                    {report.category || 'Laporan Umum'}
+                    {report.category.name || 'Laporan Umum'}
                   </p>
                   <h4 className="text-lg font-bold text-slate-900 leading-tight mb-2">
                     {report.description || 'Tanpa Judul'}

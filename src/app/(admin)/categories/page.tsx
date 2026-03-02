@@ -13,13 +13,14 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Filter
+  Filter,
+  Bookmark // Ikon baru untuk Header
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '@/lib/axios';
 import { notify } from '@/lib/notify'; 
 import ConfirmModal from '../../../components/ui/ConfirmModal'; 
-import CustomDropdown from '@/components/CustomDropdown'; // Pastikan path ini benar
+import CustomDropdown from '@/components/CustomDropdown'; 
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
@@ -28,9 +29,9 @@ export default function CategoriesPage() {
   // State Parameter API
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState(''); // '' | 'true' | 'false'
+  const [statusFilter, setStatusFilter] = useState(''); 
   const [page, setPage] = useState(1);
-  const [limit] = useState(10); // Menampilkan 10 data per halaman
+  const [limit] = useState(10); 
   const [metadata, setMetadata] = useState({ totalData: 0, totalPage: 1, currentPage: 1 });
 
   // Modal States
@@ -46,12 +47,12 @@ export default function CategoriesPage() {
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(1); // Reset page ke 1 setiap kali search berubah
+      setPage(1); 
     }, 500);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // 2. Fetch Data (GET /categories dengan Params)
+  // 2. Fetch Data 
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     try {
@@ -65,8 +66,6 @@ export default function CategoriesPage() {
       });
       
       setCategories(res.data.data || res.data || []);
-      
-      // Sesuaikan pembacaan metadata dengan struktur response backend Express kamu
       setMetadata({
         totalData: res.data.total || res.data.meta?.total || 0,
         totalPage: res.data.totalPages || res.data.meta?.totalPages || 1,
@@ -84,7 +83,7 @@ export default function CategoriesPage() {
     fetchCategories();
   }, [fetchCategories]);
 
-  // 3. Handle Submit Form (POST & PATCH)
+  // 3. Handle Submit Form
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormModal(prev => ({ ...prev, isSubmitting: true }));
@@ -163,8 +162,13 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="space-y-6 font-sans relative">
+    <div className="flex flex-col min-h-[calc(100vh-80px)] lg:h-[calc(100vh-100px)] space-y-4 md:space-y-6 relative font-sans max-w-[1600px] mx-auto w-full pb-20 lg:pb-0">
       
+      <style jsx global>{`
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+
       {/* GLOBAL MODALS */}
       <ConfirmModal 
         isOpen={confirmModal.isOpen}
@@ -210,39 +214,42 @@ export default function CategoriesPage() {
         )}
       </AnimatePresence>
 
-      {/* --- HEADER --- */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 px-1">
+      {/* --- HEADER DENGAN IKON --- */}
+      <div className="flex-none flex items-center gap-4 bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm">
+        <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-[20px] flex items-center justify-center shrink-0 border border-amber-100">
+          <Bookmark className="w-8 h-8" />
+        </div>
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Kategori Laporan</h1>
-          <p className="text-sm font-bold text-slate-500">Kelola master data klasifikasi untuk pengaduan warga.</p>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Kategori Laporan</h1>
+          <p className="text-xs md:text-sm font-bold text-slate-500 mt-1">Kelola master data klasifikasi untuk pengaduan warga.</p>
         </div>
       </div>
 
       {/* --- TOOLBAR (Search, Filter, & Add Button) --- */}
-      <div className="bg-white p-3 md:p-4 rounded-[24px] border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
+      <div className="flex-none bg-white p-3 md:p-4 rounded-[24px] border border-slate-200 shadow-sm flex flex-col xl:flex-row gap-4 justify-between items-center relative z-50">
         
-        {/* Kontainer Kiri: Search & Filter */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-          
-          {/* Search Input */}
-          <div className="relative w-full sm:w-80 shrink-0">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Cari kategori..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-[20px] text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm"
-            />
-          </div>
+        {/* Search Input */}
+        <div className="relative w-full xl:w-96 shrink-0">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+          <input 
+            type="text" 
+            placeholder="Cari kategori..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 md:py-3.5 bg-slate-50 border border-slate-200 rounded-[20px] text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm"
+          />
+        </div>
 
-          {/* Filter Dropdown */}
-          <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 relative z-50">
-            <div className="flex items-center gap-2 px-4 border-r border-slate-100 hidden sm:flex">
-              <Filter className="w-4 h-4 text-slate-400" />
+        {/* Filter & Add Button (Diperbaiki Z-Index dan Overflow-nya) */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between xl:justify-end w-full xl:w-auto gap-3 md:gap-4 relative z-50">
+          <div className="flex items-center gap-3 w-full sm:w-auto relative z-50">
+            <div className="flex items-center gap-2 pl-2 pr-4 border-r border-slate-100 hidden md:flex">
+              <Filter className="w-4 h-4 text-slate-500" />
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Filter</span>
             </div>
-            {/* Tambahkan w-full di mobile, w-fit di desktop agar rapi */}
-            <div className="w-full sm:w-fit">
+            
+            {/* Wrapper Dropdown dengan lebar penuh di mobile */}
+            <div className="w-full sm:w-[160px] relative z-50">
               <CustomDropdown
                 value={statusFilter}
                 placeholder="Semua Status"
@@ -255,119 +262,179 @@ export default function CategoriesPage() {
               />
             </div>
           </div>
+          
+          <button 
+            onClick={openAddModal}
+            className="flex items-center justify-center gap-2 bg-slate-900 text-white px-5 py-3 md:px-6 md:py-3.5 rounded-[20px] text-[11px] md:text-xs font-black uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all shadow-md shrink-0 w-full sm:w-auto"
+          >
+            <Plus className="w-4 h-4" /> Baru
+          </button>
         </div>
-        
-        {/* Tombol Add Kanan */}
-        <button 
-          onClick={openAddModal}
-          className="w-full md:w-auto flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-[20px] text-xs font-black uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all shadow-md shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Kategori Baru
-        </button>
       </div>
 
-      {/* --- TABEL CONTAINER --- */}
-      <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden flex flex-col relative">
-        <div className="overflow-x-auto hide-scrollbar">
-          <table className="w-full text-left text-sm text-slate-600 border-collapse">
-            <thead className="bg-slate-50/50 border-b border-slate-100 font-black text-slate-400 uppercase tracking-[0.2em] text-[11px] shadow-sm">
-              <tr>
-                <th className="min-w-[200px] px-8 py-6 whitespace-nowrap">Informasi Kategori</th>
-                <th className="min-w-[250px] px-8 py-6 hidden md:table-cell">Deskripsi</th>
-                <th className="min-w-[150px] px-8 py-6">Status</th>
-                <th className="sticky right-0 bg-slate-50/50 min-w-[180px] px-8 py-6 text-center shadow-[-12px_0_20px_-10px_rgba(0,0,0,0.05)]">Aksi</th>
-              </tr>
-            </thead>
-            
-            <tbody className="divide-y divide-slate-50">
-              {loading ? (
-                <tr>
-                  <td colSpan={4} className="py-24 text-center">
-                    <Loader2 className="w-10 h-10 animate-spin mx-auto text-blue-600 mb-4 opacity-20" />
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Sinkronisasi Data...</p>
-                  </td>
-                </tr>
-              ) : categories.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-24 text-center text-slate-400">
-                    <Tags className="w-10 h-10 mx-auto mb-4 opacity-20" />
-                    <p className="text-sm font-black uppercase tracking-widest">Kategori tidak ditemukan.</p>
-                  </td>
-                </tr>
-              ) : (
-                <AnimatePresence mode="popLayout">
-                  {categories.map((item: any, idx) => (
-                    <motion.tr 
-                      key={item.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.03 }}
-                      className="hover:bg-slate-50/40 transition-colors group"
-                    >
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center font-black text-lg shrink-0 shadow-sm ${item.is_active ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
-                            {item.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className={`text-[14px] font-black leading-tight ${item.is_active ? 'text-slate-900' : 'text-slate-400 line-through'}`}>{item.name}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ID: #{item.id}</p>
-                          </div>
-                        </div>
-                      </td>
-                      
-                      <td className="px-8 py-5 hidden md:table-cell">
-                        <p className={`text-[12px] font-bold line-clamp-2 max-w-[350px] ${item.is_active ? 'text-slate-600' : 'text-slate-400'}`}>
-                          {item.description || <span className="italic opacity-50">Tidak ada deskripsi</span>}
-                        </p>
-                      </td>
-                      
-                      <td className="px-8 py-5">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black border uppercase tracking-widest whitespace-nowrap ${
-                          item.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${item.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
-                          {item.is_active ? 'Aktif' : 'Nonaktif'}
-                        </span>
-                      </td>
-                      
-                      {/* KOLOM AKSI (STICKY) */}
-                      <td className="sticky right-0 bg-white shadow-[-12px_0_20px_-10px_rgba(0,0,0,0.05)] px-8 py-5">
-                        <div className="flex justify-center items-center gap-2">
-                          <button onClick={() => handleToggleStatus(item.id, item.is_active, item.name)} className={`p-2.5 rounded-xl border transition-all active:scale-90 ${item.is_active ? 'bg-slate-50 border-slate-100 text-slate-400 hover:text-rose-500 hover:border-rose-100' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`} title={item.is_active ? "Nonaktifkan Kategori" : "Aktifkan Kategori"}>
-                            {item.is_active ? <ShieldAlert className="w-4.5 h-4.5" /> : <ShieldCheck className="w-4.5 h-4.5" />}
-                          </button>
-                          <button onClick={() => openEditModal(item)} className="p-2.5 rounded-xl border border-slate-100 bg-slate-50 text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all active:scale-90 shadow-sm" title="Edit Kategori">
-                            <Edit3 className="w-4.5 h-4.5" />
-                          </button>
-                          <button onClick={() => handleDelete(item.id, item.name)} className="p-2.5 rounded-xl border border-slate-100 bg-slate-50 text-slate-400 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-90 shadow-sm" title="Hapus Permanen">
-                            <Trash2 className="w-4.5 h-4.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* PAGINATION FOOTER */}
-        <div className="px-8 py-6 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 font-bold">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-            Database: <span className="text-slate-900">{metadata?.totalData || 0} Entitas</span>
-          </p>
-          <div className="flex items-center gap-4">
-            <button disabled={page === 1 || loading} onClick={() => setPage(p => p - 1)} className="p-3 rounded-2xl bg-white border border-slate-200 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-90">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="bg-white border border-slate-200 px-5 py-2.5 rounded-2xl shadow-sm">
-              <span className="text-sm font-black text-slate-800">
-                {metadata?.currentPage || 1} <span className="text-slate-300 mx-2">/</span> {metadata?.totalPage || 1}
-              </span>
-            </div>
-            <button disabled={page === (metadata?.totalPage || 1) || loading} onClick={() => setPage(p => p + 1)} className="p-3 rounded-2xl bg-white border border-slate-200 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-90">
-              <ChevronRight className="w-5 h-5" />
-            </button>
+      {/* --- KONTEN UTAMA --- */}
+      <div className="flex-1 flex flex-col relative w-full">
+        {loading ? (
+          <div className="flex-1 flex flex-col items-center justify-center bg-white rounded-[32px] border border-slate-200 min-h-[300px]">
+            <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4 opacity-20" />
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Sinkronisasi...</p>
           </div>
+        ) : categories.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center bg-white rounded-[32px] border border-slate-200 min-h-[300px]">
+            <Tags className="w-12 h-12 text-slate-300 mb-4" />
+            <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Kategori tidak ditemukan.</p>
+          </div>
+        ) : (
+          <>
+            {/* VIEW MOBILE (Tampil Card) */}
+            <div className="md:hidden flex flex-col gap-4 w-full">
+              <AnimatePresence mode="popLayout">
+                {categories.map((item: any, idx) => (
+                  <motion.div 
+                    key={`mob-${item.id}`}
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
+                    className="bg-white p-5 rounded-[24px] border border-slate-200 shadow-sm flex flex-col gap-4"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center font-black text-lg shrink-0 shadow-sm ${item.is_active ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
+                          {item.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 className={`font-black text-sm mb-0.5 ${item.is_active ? 'text-slate-900' : 'text-slate-400 line-through'}`}>{item.name}</h3>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: #{item.id}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className={`text-xs font-medium leading-relaxed line-clamp-2 ${item.is_active ? 'text-slate-600' : 'text-slate-400'}`}>
+                      {item.description || <span className="italic opacity-50">Tidak ada deskripsi</span>}
+                    </p>
+
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-1">
+                      <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${
+                        item.is_active ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-rose-600 bg-rose-50 border-rose-100'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${item.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                        <span className="text-[9px] font-black uppercase tracking-widest">{item.is_active ? 'Aktif' : 'Nonaktif'}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleToggleStatus(item.id, item.is_active, item.name)} className={`p-2.5 rounded-xl border transition-all active:scale-90 ${item.is_active ? 'bg-slate-50 border-slate-200 text-slate-500 hover:text-rose-500 hover:bg-rose-50' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
+                          {item.is_active ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                        </button>
+                        <button onClick={() => openEditModal(item)} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:text-blue-600 transition-all active:scale-90 shadow-sm">
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(item.id, item.name)} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all active:scale-90 shadow-sm">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* VIEW DESKTOP (Tampil Tabel) */}
+            <div className="hidden md:flex flex-1 bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden flex-col w-full mb-4">
+              <div className="flex-1 overflow-auto hide-scrollbar">
+                <table className="w-full border-collapse">
+                  <thead className="bg-slate-50/50 border-b border-slate-100 font-black text-slate-400 uppercase tracking-[0.2em] text-[11px] sticky top-0 z-10 shadow-sm">
+                    <tr>
+                      <th className="min-w-[250px] px-8 py-6 text-left">Informasi Kategori</th>
+                      <th className="min-w-[300px] px-8 py-6 text-left">Deskripsi</th>
+                      <th className="min-w-[150px] px-8 py-6 text-left">Status</th>
+                      <th className="sticky right-0 bg-slate-50/50 min-w-[180px] px-8 py-6 text-center shadow-[-12px_0_20px_-10px_rgba(0,0,0,0.05)]">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 text-sm">
+                    <AnimatePresence mode="popLayout">
+                      {categories.map((item: any, idx) => (
+                        <motion.tr layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: idx * 0.02 }} key={`desk-${item.id}`} className="hover:bg-slate-50/40 transition-colors group">
+                          <td className="px-8 py-5">
+                            <div className="flex items-center gap-4">
+                              <div className={`w-11 h-11 rounded-[16px] flex items-center justify-center font-black text-lg shrink-0 shadow-sm ${item.is_active ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
+                                {item.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className={`text-[14px] font-black leading-tight ${item.is_active ? 'text-slate-900' : 'text-slate-400 line-through'}`}>{item.name}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ID: #{item.id}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-8 py-5">
+                            <p className={`text-[13px] font-bold line-clamp-2 max-w-[350px] ${item.is_active ? 'text-slate-600' : 'text-slate-400'}`}>
+                              {item.description || <span className="italic opacity-50">Tidak ada deskripsi</span>}
+                            </p>
+                          </td>
+                          <td className="px-8 py-5">
+                            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${
+                              item.is_active ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-rose-600 bg-rose-50 border-rose-100'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${item.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                              <span className="text-[9px] font-black uppercase tracking-widest">{item.is_active ? 'Aktif' : 'Nonaktif'}</span>
+                            </div>
+                          </td>
+                          <td className="sticky right-0 bg-white px-8 py-5 shadow-[-12px_0_20px_-10px_rgba(0,0,0,0.05)]">
+                            <div className="flex items-center justify-center gap-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => handleToggleStatus(item.id, item.is_active, item.name)} 
+                                className={`p-2 rounded-xl border transition-all active:scale-90 ${item.is_active ? 'bg-slate-50 border-slate-100 text-slate-400 hover:text-rose-500 hover:border-rose-100' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}
+                                title={item.is_active ? "Nonaktifkan" : "Aktifkan"}
+                              >
+                                {item.is_active ? <ShieldAlert className="w-4.5 h-4.5" /> : <ShieldCheck className="w-4.5 h-4.5" />}
+                              </button>
+                              <button 
+                                onClick={() => openEditModal(item)} 
+                                className="p-2 rounded-xl border border-slate-100 bg-slate-50 text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all active:scale-90 shadow-sm"
+                              >
+                                <Edit3 className="w-4.5 h-4.5" />
+                              </button>
+                              <button 
+                                onClick={() => handleDelete(item.id, item.name)} 
+                                className="p-2 rounded-xl border border-slate-100 bg-slate-50 text-slate-400 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-90 shadow-sm"
+                              >
+                                <Trash2 className="w-4.5 h-4.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* --- FOOTER PAGINATION --- */}
+      <div className="flex-none bg-white md:bg-transparent rounded-[24px] md:rounded-none p-4 md:p-0 md:px-4 border border-slate-200 md:border-none shadow-sm md:shadow-none flex flex-col sm:flex-row items-center justify-between gap-4 mt-auto">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+          Database: <span className="text-slate-900">{metadata?.totalData || 0} Entitas</span>
+        </p>
+        <div className="flex items-center gap-3">
+          <button 
+            disabled={page === 1 || loading} 
+            onClick={() => setPage(p => p - 1)} 
+            className="p-2.5 md:p-3 rounded-[14px] bg-white border border-slate-200 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-90"
+          >
+            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+          <div className="bg-white border border-slate-200 px-4 md:px-5 py-2 md:py-2.5 rounded-[12px] shadow-sm">
+            <span className="text-xs font-black text-slate-800">
+              {metadata?.currentPage || 1} <span className="text-slate-300 mx-1">/</span> {metadata?.totalPage || 1}
+            </span>
+          </div>
+          <button 
+            disabled={page === (metadata?.totalPage || 1) || loading} 
+            onClick={() => setPage(p => p + 1)} 
+            className="p-2.5 md:p-3 rounded-[14px] bg-white border border-slate-200 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-90"
+          >
+            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
         </div>
       </div>
     </div>
